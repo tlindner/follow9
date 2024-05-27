@@ -89,23 +89,23 @@ function disassemble() {
     all_caps = document.getElementById("allCaps").checked;
     list_opcodes = document.getElementById("listOpcodes").checked;
     print_address = document.getElementById("printAddress").checked;
-	result = "";
-	
+    result = "";
+
     if(list_opcodes) {
-    	opcode_space = "                ";
-	}
-	else
-	{
-    	opcode_space = "";
-	}
+        opcode_space = "                ";
+    }
+    else
+    {
+        opcode_space = "";
+    }
 
     if(print_address) {
-    	address_space = "     ";
-	}
-	else
-	{
-    	address_space = "";
-	}
+        address_space = "     ";
+    }
+    else
+    {
+        address_space = "";
+    }
 
     let memory = new Array(65536);
     let view = new Uint8Array(buffer);
@@ -123,7 +123,7 @@ function disassemble() {
     for (let i = 0; i < no_follow.length; i++) {
         no_follow[i] = parseInt(no_follow[i]);
     }
-	
+
     // build transfer address array
     let preTransfer = document.getElementById("transferList").value;
     if (preTransfer == "")
@@ -136,14 +136,14 @@ function disassemble() {
     for (let i = 0; i < transfers.length; i++) {
         transfers[i] = parseInt(transfers[i]);
     }
-	
+
     switch(document.querySelector("input[name=file_type]:checked").value)
     {
         case "raw":
             // Load data into memory, offset by offset
 
             for (let i=0; i<view.length; i++) {
-            	write_memory(memory,i+offset,view[i]);
+                write_memory(memory,i+offset,view[i]);
             }
         break;
 
@@ -186,13 +186,13 @@ function disassemble() {
                     break;
 
                     case 5:
-           			 	write_memory(memory,address+offset,view[i]);
+                        write_memory(memory,address+offset,view[i]);
                         length -= 1;
 
                         if(length==0) {
                             state = 0;
                         }
-                        
+
                         address += 1;
                     break;
 
@@ -236,26 +236,26 @@ function disassemble() {
             document.getElementById("disassembly").value = "Unknown value for file_type.";
             return;
     }
-	
-	document.getElementById("disassembly").value = "";
-	
-	// Add transfer table to transfer array
-	let ttl = document.getElementById("transferTable").value.split(",");
-	ttl.forEach((item) => {
-		let range = item.split(";");
-		let start = parseInt(range[0]);
-		let length = parseInt(range[1]);
 
-		for( let i=start; i<start+length; i+=2 )
-		{
-			let address = read_memory(memory,i) << 8;
-			address += read_memory(memory,i+1);
-			if(address != undefined) transfers.push(address);
-		}
-	});	
-	
-	document.getElementById("disassembly").value += transfers;
-	
+    document.getElementById("disassembly").value = "";
+
+    // Add transfer table to transfer array
+    let ttl = document.getElementById("transferTable").value.split(",");
+    ttl.forEach((item) => {
+        let range = item.split(";");
+        let start = parseInt(range[0]);
+        let length = parseInt(range[1]);
+
+        for( let i=start; i<start+length; i+=2 )
+        {
+            let address = read_memory(memory,i) << 8;
+            address += read_memory(memory,i+1);
+            if(address != undefined) transfers.push(address);
+        }
+    });
+
+    document.getElementById("disassembly").value += transfers;
+
     // Fill disassembly array
     let pc = transfers.pop();
     let dis = new Array;
@@ -267,52 +267,52 @@ function disassemble() {
         }
         else if(dis[pc] == undefined)
         {
-        	// check address if on no follow list
-        	if(no_follow.includes(pc))
-        	{
-        		pc = transfers.pop();
-        		continue;
-        	}
-        	
+            // check address if on no follow list
+            if(no_follow.includes(pc))
+            {
+                pc = transfers.pop();
+                continue;
+            }
+
             // disassemble new PC
             let address, pc_mode;
-			
-			if( allow_6309_codes )
-            	[pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1);
+
+            if( allow_6309_codes )
+                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1);
             else
-            	[pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6809_p1);
+                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6809_p1);
 
             switch( pc_mode ) {
                 case "pc_nop":     /* no effect */
                 break;
                 case "pc_jmp":     /* jump */
-                	pc = address;
+                    pc = address;
                 break;
                 case "pc_bra":     /* branch, or subroutine jump */
-                	if( address != undefined)
-                	{
-            	    	transfers.push(address);
-                	}
+                    if( address != undefined)
+                    {
+                        transfers.push(address);
+                    }
                 break;
                 case "pc_tfr":     /* register transfer */
-                	if((read_memory(memory,pc-1) & 0x05) == 0x05)
-                	{
-                		// PC written, at end of subroutine
-                		pc = transfers.pop();
-                	}
+                    if((read_memory(memory,pc-1) & 0x05) == 0x05)
+                    {
+                        // PC written, at end of subroutine
+                        pc = transfers.pop();
+                    }
                 break;
                 case "pc_ret":     /* return from subroutine */
-                	pc = transfers.pop();
+                    pc = transfers.pop();
                 break;
                 case "pc_pul":     /* possible end of execution */
-                	if( read_memory(memory, pc-1) & 0x80 == 0x80)
-                	{
-                		// PC pulled, at end of subroutine
-                		pc = transfers.pop();
-                	}
+                    if( read_memory(memory, pc-1) & 0x80 == 0x80)
+                    {
+                        // PC pulled, at end of subroutine
+                        pc = transfers.pop();
+                    }
                 break;
                 case "pc_end":     /* end of execution */
-                	pc = transfers.pop();
+                    pc = transfers.pop();
                 break;
                 default:
                     document.getElementById("disassembly").value = "Fatal error: Unimplemented pc_mode at address: $" + pc.toString(16).padStart(4,"0");
@@ -326,117 +326,117 @@ function disassemble() {
     }
 
     // pretty print disassembly
-	state = 0;
-	let fcb = new Array;
+    state = 0;
+    let fcb = new Array;
 
     for( let i=0; i<65536; i++ ) {
 
         if(memory[i] == undefined ) {
-        	print_fcb(memory, fcb);
+            print_fcb(memory, fcb);
 
             // Nothing to do if memory is unassigned
             state = 0;
         }
         else if( (dis[i] != undefined))
         {
-        	print_fcb(memory, fcb);
+            print_fcb(memory, fcb);
 
-        	if(state == 0 )
-        	{
-        		state = 1;
-        		result += conditional_caps(address_space + opcode_space + " org     $" + (i).toString(16).padStart(4,"0") + "\r");
-        	}
+            if(state == 0 )
+            {
+                state = 1;
+                result += conditional_caps(address_space + opcode_space + " org     $" + (i).toString(16).padStart(4,"0") + "\r");
+            }
 
             // disassemble
             if(dis[i] != "" )
             {
-            	if(print_address) result += conditional_caps((i).toString(16).padStart(4,"0")).padEnd(5, " ");
-            	
+                if(print_address) result += conditional_caps((i).toString(16).padStart(4,"0")).padEnd(5, " ");
+
                 result += conditional_caps(dis[i] + "\r");
             }
         }
         else
         {
-        	if(state == 0 )
-        	{
-        		state = 1;
-        		result += conditional_caps(address_space + opcode_space + " org     $" + (i).toString(16).padStart(4,"0") + "\r");
-        	}
-        	
-        	// FCB
-        	fcb.push(i);
+            if(state == 0 )
+            {
+                state = 1;
+                result += conditional_caps(address_space + opcode_space + " org     $" + (i).toString(16).padStart(4,"0") + "\r");
+            }
+
+            // FCB
+            fcb.push(i);
         }
     }
 
     print_fcb(memory, fcb);
-    
+
     document.getElementById("disassembly").value = result;
 }
 
 function conditional_caps(string)
 {
-	if(all_caps)
-	{
-		return string.toUpperCase();
-	}
-	
-	return string;
+    if(all_caps)
+    {
+        return string.toUpperCase();
+    }
+
+    return string;
 }
 
 function print_fcb(mem, fcb )
 {
-	let i=0, j=0;
-	let hex = "", ascii = "";
-	let address = fcb[i];
+    let i=0, j=0;
+    let hex = "", ascii = "";
+    let address = fcb[i];
 
-	while( i < fcb.length )
-	{
-		if(j==0)
-		{
-			address = fcb[i];
-			hex = "$" + mem[fcb[i]].toString(16).padStart(2,"0");
-			ascii = make_print(mem[fcb[i]]);
-		}
-		else
-		{
-			hex += ",$" + mem[fcb[i]].toString(16).padStart(2,"0")
-			ascii += make_print(mem[fcb[i]]);
-		}
+    while( i < fcb.length )
+    {
+        if(j==0)
+        {
+            address = fcb[i];
+            hex = "$" + mem[fcb[i]].toString(16).padStart(2,"0");
+            ascii = make_print(mem[fcb[i]]);
+        }
+        else
+        {
+            hex += ",$" + mem[fcb[i]].toString(16).padStart(2,"0")
+            ascii += make_print(mem[fcb[i]]);
+        }
 
-		i += 1
-		j += 1
+        i += 1
+        j += 1
 
-		if(j>7)
-		{
-			if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
-			result += opcode_space + conditional_caps(" fcb     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
+        if(j>7)
+        {
+            if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
+            result += opcode_space + conditional_caps(" fcb     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
 
-			j=0;
-		}
-	}
+            j=0;
+        }
+    }
 
-	if( j!= 0 )
-	{
-		if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
-		result += opcode_space + conditional_caps(" fcb     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
-	}
+    if( j!= 0 )
+    {
+        if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
+        result += opcode_space + conditional_caps(" fcb     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
+    }
 
-	fcb.length = 0;
+    fcb.length = 0;
 }
 
 function make_print(aChar)
 {
-	if((aChar > 31) && (aChar <  127))
-	{
-		return String.fromCharCode(aChar);
-	}
+    if((aChar > 31) && (aChar <  127))
+    {
+        return String.fromCharCode(aChar);
+    }
 
-	return ".";
+    return ".";
 }
 
 function disem( mem, pc, dis, inTable )
 {
-	let table;
+    let table;
     let argument;
     let address;
     let origPC = pc;
@@ -445,24 +445,24 @@ function disem( mem, pc, dis, inTable )
     let mnenonmic;
     let operand = "";
 
-	if( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11))
-	{
- 		while( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11) )
- 		{
- 		    pc = next_pc( pc, 1 );
-		}
+    if( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11))
+    {
+        while( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11) )
+        {
+            pc = next_pc( pc, 1 );
+        }
 
-		table = inTable[read_memory(mem, origPC)][1];
-	}
-	else
-	{
-		table = inTable;
-	}
+        table = inTable[read_memory(mem, origPC)][1];
+    }
+    else
+    {
+        table = inTable;
+    }
 
-	current = table[read_memory(mem, pc)];
-	origPCMode = current[2];
-	mnenonmic = current[0];
-	pc = next_pc( pc, 1 );
+    current = table[read_memory(mem, pc)];
+    origPCMode = current[2];
+    mnenonmic = current[0];
+    pc = next_pc( pc, 1 );
 
     switch( current[1] ){
         case "nom":    /* no mode */
@@ -504,18 +504,18 @@ function disem( mem, pc, dis, inTable )
             [pc, operand, address] = index_decode( mem, pc, operand );
             if((read_memory(mem,origPC) == 0xad) && (read_memory(mem,origPC+1) == 0x9f))
             {
-            	// JSR Indexed
-            	if( (mem[address] != undefined) && (mem[address+1] != undefined))
-            	{
-            		let temp;
-            		temp = mem[address] << 8;
-            		temp += mem[address+1];
-            		address = temp;
-            	}
-            	else
-            	{
-            		address = undefined;
-            	}
+                // JSR Indexed
+                if( (mem[address] != undefined) && (mem[address+1] != undefined))
+                {
+                    let temp;
+                    temp = mem[address] << 8;
+                    temp += mem[address+1];
+                    address = temp;
+                }
+                else
+                {
+                    address = undefined;
+                }
             }
         break;
 
@@ -540,12 +540,12 @@ function disem( mem, pc, dis, inTable )
             pc = next_pc( pc, 1 );
             if(allow_6309_codes)
             {
-            	operand = h6309_exg_tfr[address>>4] + "," + h6309_exg_tfr[address&15];
+                operand = h6309_exg_tfr[address>>4] + "," + h6309_exg_tfr[address&15];
             }
             else
             {
-            	operand = m6809_exg_tfr[address>>4] + "," + m6809_exg_tfr[address&15];
-			}
+                operand = m6809_exg_tfr[address>>4] + "," + m6809_exg_tfr[address&15];
+            }
         break;
 
         case "r2":    /* pul/psh system */
@@ -644,7 +644,7 @@ function disem( mem, pc, dis, inTable )
     }
 
     dis[origPC] = "";
-	let opcode_space;
+    let opcode_space;
 
     if(list_opcodes) {
         for ( let i=origPC; i<pc; i++ )
@@ -675,7 +675,7 @@ function read_memory(mem, pc)
 
 function write_memory(mem, address, value )
 {
-	mem[address&0xffff] = value;
+    mem[address&0xffff] = value;
 }
 
 function next_pc( pc, count ) {

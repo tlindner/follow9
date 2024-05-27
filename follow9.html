@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>follow9</title>
+<script type="text/javascript" src="follow9.js"></script>
+</head>
+<body>
+<div style="float:left;width:40%;">
+<h2>follow9 - Javascript 6x09 Disassembler</h2>
+<label for="datafile">File:</label>
+<input onclick="newFile()" type="file" id="datafile" name="datafile" required minlength="4" maxlength="8" size="10" />
+<div style="margin-top:12px;"><label for="file_type">File Type:</label><input type="radio" id="raw" name="file_type" value="raw" checked="checked" onchange="disassemble()"><label for="html">Raw</label><input type="radio" id="decb" name="file_type" value="decb" onchange="disassemble()"></label><label for="css">DECB</label><input type="radio" id="os9" name="file_type" value="os9" onchange="disassemble()" hidden><label for="javascript" hidden>OS-9</label></div>
+<div style="margin-top:12px;"><label for="offset">Load offset:</label>
+<input type="text" id="offset" name="offset" value="0" onchange="disassemble()"></input>
+<font size="-1">Use '0x' for hexidecimal.</font></div>
+<div style="margin-top:12px;"><label for="transferList">Transfer Addresses:</label><br />
+<textarea id="transferList" name="transferList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…">0</textarea>
+<font size="-1">List of addresses to start disassembly.</font></div>
+<div style="margin-top:12px;"><label for="transferTable">Transfer Tables:</label><br />
+<textarea id="transferTable" name="transferTable" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1;length1,address2;length2,…"></textarea>
+<font size="-1">List of addresses and lengths for embedded jump tables.</font></div>
+<br>
+<label for="noFollow">No Follow Addresses:</label><br />
+<textarea id="noFollow" name="noFollow" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
+<font size="-1">List of addressed that won't disassemble.</font>
+<div style="margin-top:12px;"><input type="checkbox" id="hd6309" name="hd6309" value="hd6309" onchange="disassemble()"><label for="hd6309">Support HD6309 opcodes</label></input>
+<br>
+<input type="checkbox" id="allCaps" name="allCaps" value="allCaps" onchange="disassemble()"><label for="allCaps">Capitalize disassembly</label></input>
+<br>
+<input type="checkbox" id="listOpcodes" name="listOpcodes" value="listOpcodes" onchange="disassemble()" checked="true"><label for="listOpcodes">List opcodes</label></input>
+<br>
+<input type="checkbox" id="printAddress" name="printAddress" value="printAddress" onchange="disassemble()" checked="true"><label for="printAddress">List address</label></input>
+</div>
+<div style="margin-top:12px;">Copyright 2024 by tim lindner
+<br>
+Derived from dasm09 by Arto Salmi
+<hr>
+https://www.macmess.org/follow9.html
+<br>
+https://github.com/tlindner/follow9
+</div></div>
+<div style="float:right;width:60%;">
+<label for="disassembly">Disassembly:</label><br />
+<textarea id="disassembly" name="disassembly" rows="42" cols="80" spellcheck="false">
+This is where the disassembly will go.
+</textarea>
+</div>
+<br>
+

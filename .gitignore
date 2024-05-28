@@ -1,4 +1,4 @@
 *.bin
 *.lst
-test/index
-test/index.exe
+tests/index
+tests/index.exe

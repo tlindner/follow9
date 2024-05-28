@@ -11,11 +11,12 @@
  * notice, this list of conditions and the following disclaimer in the
  * documentation and/or other materials provided with the distribution.
  *
- * This software is derived from dasm09, so it's copyright is below.
+ * This software is derived from dasm09, so its license is below.
  ***************************************************************************/
 
 /***************************************************************************
- * dasm09 -- Portable M6809/H6309/OS9 Disassembler                                                                      *
+ * dasm09 -- Portable M6809/H6309/OS9 Disassembler
+ *
  * Copyright (c) 2000,2013  Arto Salmi
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -78,7 +79,6 @@ function newFile() {
         // here we tell the reader what to do when it"s done reading...
         reader.onload = readerEvent => {
             buffer = readerEvent.target.result; // this is the content!
-            console.log( buffer );
             disassemble();
         }
     }
@@ -148,6 +148,7 @@ function disassemble() {
         break;
 
         case "decb":
+            // Disk Extended Color BASIC allows discontiguous segements and an execution address
             let i=0;
             let state = 0;
             let length, address;
@@ -225,6 +226,8 @@ function disassemble() {
 
                 i += 1;
             }
+            
+            // TODO: symbol table: http://tlindner.macmess.org/?p=820
         break;
 
         case "os9":
@@ -239,7 +242,7 @@ function disassemble() {
 
     document.getElementById("disassembly").value = "";
 
-    // Add transfer table to transfer array
+    // Add transfer table addresses to transfer array
     let ttl = document.getElementById("transferTable").value.split(",");
     ttl.forEach((item) => {
         let range = item.split(";");
@@ -254,15 +257,13 @@ function disassemble() {
         }
     });
 
-    document.getElementById("disassembly").value += transfers;
-
     // Fill disassembly array
     let pc = transfers.pop();
     let dis = new Array;
 
     while(pc != undefined) {
         if( memory[pc] == undefined ) {
-            // unasigned memory
+            // unasigned memory, move on
             pc = transfers.pop();
         }
         else if(dis[pc] == undefined)
@@ -297,7 +298,7 @@ function disassemble() {
                 case "pc_tfr":     /* register transfer */
                     if((read_memory(memory,pc-1) & 0x05) == 0x05)
                     {
-                        // PC written, at end of subroutine
+                        // PC overwritten (at end of subroutine)
                         pc = transfers.pop();
                     }
                 break;
@@ -305,7 +306,7 @@ function disassemble() {
                     pc = transfers.pop();
                 break;
                 case "pc_pul":     /* possible end of execution */
-                    if( read_memory(memory, pc-1) & 0x80 == 0x80)
+                    if( (read_memory(memory, pc-1) & 0x80) == 0x80)
                     {
                         // PC pulled, at end of subroutine
                         pc = transfers.pop();
@@ -343,6 +344,7 @@ function disassemble() {
 
             if(state == 0 )
             {
+                // print org statement if there is a gap
                 state = 1;
                 result += conditional_caps(address_space + opcode_space + " org     $" + (i).toString(16).padStart(4,"0") + "\r");
             }
@@ -359,6 +361,7 @@ function disassemble() {
         {
             if(state == 0 )
             {
+                // print org statement if there is a gap
                 state = 1;
                 result += conditional_caps(address_space + opcode_space + " org     $" + (i).toString(16).padStart(4,"0") + "\r");
             }
@@ -445,6 +448,7 @@ function disem( mem, pc, dis, inTable )
     let mnenonmic;
     let operand = "";
 
+    // Handle opcode prefix
     if( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11))
     {
         while( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11) )
@@ -466,7 +470,7 @@ function disem( mem, pc, dis, inTable )
 
     switch( current[1] ){
         case "nom":    /* no mode */
-            operand = "Invalid"
+            operand = "???"
         break;
 
         case "imp":    /* inherent/implied */
@@ -645,9 +649,25 @@ function disem( mem, pc, dis, inTable )
 
     dis[origPC] = "";
     let opcode_space;
-
+    let j;
+    
     if(list_opcodes) {
-        for ( let i=origPC; i<pc; i++ )
+        if( origPC > pc )
+        {
+            // handle wrap around
+            for ( let i=origPC; i<0x10000; i++ )
+            {
+                dis[origPC] += read_memory(mem, i).toString(16).padStart(2,"0")
+            }
+            
+            j = 0;
+        }
+        else
+        {
+            j = origPC;
+        }
+        
+        for ( let i=j; i<pc; i++ )
         {
             dis[origPC] += read_memory(mem, i).toString(16).padStart(2,"0")
         }
@@ -657,7 +677,24 @@ function disem( mem, pc, dis, inTable )
 
     dis[origPC] += " " + (mnenonmic.padEnd(8, " ") + operand).trim();
 
-    for( let i=origPC+1; i<pc; i++ ) {
+    // other memory bytes are set to empty string to suppress printing
+    if( origPC+1 > pc )
+    {
+        // handle wrap around
+        for ( let i=origPC+1; i<0x10000; i++ )
+        {
+            dis[i] = "";
+        }
+        
+        j = 0;
+    }
+    else
+    {
+        j = origPC+1;
+    }
+    
+    for( let i=j; i<pc; i++ )
+    {
         dis[i] = "";
     }
 

@@ -286,6 +286,7 @@ function disassemble() {
         if(address != undefined)
         {
             label_aa[address] = pair[0];
+            label_table.push(address);
         }
     });
 
@@ -396,7 +397,6 @@ function disassemble() {
             if( generate_label && label_table.includes(i))
             {
                 result += address_space + opcode_space + generate_conditional_label(i) + "\r";
-
             }
 
             // disassemble
@@ -468,7 +468,6 @@ function print_fcb(mem, fcb )
     let fdb;
     let optional_comma, psuedo_op;
 
-
     fdb = jump_table.includes(fcb[i]);
 
     while( i < fcb.length )
@@ -478,7 +477,6 @@ function print_fcb(mem, fcb )
             if(generate_label && label_table.includes(fcb[i]))
             {
                 result += address_space + opcode_space + generate_conditional_label(fcb[i]) + "\r";
-
             }
 
             address = fcb[i];

@@ -47,6 +47,9 @@ var list_opcodes = false;
 var opcode_space, address_space;
 var result;
 var print_address;
+var label_table, jump_table;
+var generate_label;
+var absIndPC;
 
 const m6809_exg_tfr = ["d", "x", "y", "u", "s", "pc", "??", "??", "a", "b", "cc", "dp", "??", "??", "??", "??" ];
 const h6309_exg_tfr = ["d", "x", "y", "u", "s", "pc", "w" ,"v", "a", "b", "cc", "dp", "0", "0", "e", "f"];
@@ -89,7 +92,11 @@ function disassemble() {
     all_caps = document.getElementById("allCaps").checked;
     list_opcodes = document.getElementById("listOpcodes").checked;
     print_address = document.getElementById("printAddress").checked;
+    generate_label = document.getElementById("genLabel").checked;
+    absIndPC = document.getElementById("absIndPC").checked;
     result = "";
+    label_table = new Array;
+    jump_table = new Array;
 
     if(list_opcodes) {
         opcode_space = "                ";
@@ -125,17 +132,22 @@ function disassemble() {
     }
 
     // build transfer address array
+    let transfers;
     let preTransfer = document.getElementById("transferList").value;
-    if (preTransfer == "")
+    if (preTransfer != "")
     {
-        preTransfer = "0";
+        transfers = preTransfer.split(",");
+
+        for (let i = 0; i < transfers.length; i++) {
+            transfers[i] = parseInt(transfers[i]);
+            label_table.push(transfers[i]);
+        }
+    }
+    else
+    {
+        transfers = new Array;
     }
 
-    let transfers = preTransfer.split(",");
-
-    for (let i = 0; i < transfers.length; i++) {
-        transfers[i] = parseInt(transfers[i]);
-    }
 
     switch(document.querySelector("input[name=file_type]:checked").value)
     {
@@ -226,8 +238,8 @@ function disassemble() {
 
                 i += 1;
             }
-            
-            // TODO: symbol table: http://tlindner.macmess.org/?p=820
+
+            // TODO: load symbol table: http://tlindner.macmess.org/?p=820
         break;
 
         case "os9":
@@ -248,12 +260,18 @@ function disassemble() {
         let range = item.split(";");
         let start = parseInt(range[0]);
         let length = parseInt(range[1]);
+        label_table.push(start);
 
         for( let i=start; i<start+length; i+=2 )
         {
             let address = read_memory(memory,i) << 8;
             address += read_memory(memory,i+1);
-            if(address != undefined) transfers.push(address);
+            if(address != undefined)
+            {
+                transfers.push(address);
+                label_table.push(address);
+                jump_table.push(i);
+            }
         }
     });
 
@@ -326,6 +344,17 @@ function disassemble() {
         }
     }
 
+    // Sort and unique label table
+    label_table = [...new Set(label_table)].sort();
+
+    // print out of bounds labels as equates
+    label_table.forEach((item) => {
+        if( memory[item] == undefined )
+        {
+            result += address_space + opcode_space + generate_conditional_label(item) + conditional_caps(" equ $" + item.toString(16).padStart(4,"0")) + "\r";
+        }
+    });
+
     // pretty print disassembly
     state = 0;
     let fcb = new Array;
@@ -347,6 +376,12 @@ function disassemble() {
                 // print org statement if there is a gap
                 state = 1;
                 result += conditional_caps(address_space + opcode_space + " org     $" + (i).toString(16).padStart(4,"0") + "\r");
+            }
+
+            // label
+            if( generate_label && label_table.includes(i))
+            {
+                result += address_space + opcode_space + "L" + (i).toString(16).padStart(4,"0").toUpperCase() + "\r";
             }
 
             // disassemble
@@ -376,6 +411,23 @@ function disassemble() {
     document.getElementById("disassembly").value = result;
 }
 
+function generate_conditional_label(address)
+{
+    let string;
+
+    if(generate_label)
+    {
+        string = "L" + address.toString(16).padStart(4,"0").toUpperCase();
+        label_table.push(address);
+    }
+    else
+    {
+        string = "$" + address.toString(16).padStart(4,"0");
+    }
+
+    return string;
+}
+
 function conditional_caps(string)
 {
     if(all_caps)
@@ -391,37 +443,70 @@ function print_fcb(mem, fcb )
     let i=0, j=0;
     let hex = "", ascii = "";
     let address = fcb[i];
+    let fdb;
+    let optional_comma, psuedo_op;
+
+
+    fdb = jump_table.includes(fcb[i]);
 
     while( i < fcb.length )
     {
         if(j==0)
         {
+            if(generate_label && label_table.includes(fcb[i]))
+            {
+                result += address_space + opcode_space + "L" + fcb[i].toString(16).padStart(4,"0").toUpperCase() + "\r";
+            }
+
             address = fcb[i];
-            hex = "$" + mem[fcb[i]].toString(16).padStart(2,"0");
-            ascii = make_print(mem[fcb[i]]);
+            optional_comma = "";
+            hex = "";
+            ascii = "";
         }
         else
         {
-            hex += ",$" + mem[fcb[i]].toString(16).padStart(2,"0")
+            optional_comma = ",";
+        }
+
+        if(fdb)
+        {
+            let table = mem[fcb[i]] << 8;
+            i += 1;
+            table += mem[fcb[i]];
+            hex += optional_comma + "L" + table.toString(16).padStart(4,"0");
+            ascii += "";
+            psuedo_op = "fdb";
+        }
+        else
+        {
+            hex += optional_comma + "$" + mem[fcb[i]].toString(16).padStart(2,"0");
             ascii += make_print(mem[fcb[i]]);
+            psuedo_op = "fcb";
         }
 
         i += 1
         j += 1
 
-        if(j>7)
+        if(generate_label && label_table.includes(fcb[i]))
+        {
+            // Next address has a label
+            j=8;
+        }
+
+        if((j>7) || (fdb != jump_table.includes(fcb[i])))
         {
             if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
-            result += opcode_space + conditional_caps(" fcb     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
-
+            result += opcode_space + conditional_caps(" " + psuedo_op + "     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
             j=0;
         }
+
+        fdb = jump_table.includes(fcb[i])
     }
 
     if( j!= 0 )
     {
         if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
-        result += opcode_space + conditional_caps(" fcb     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
+        result += opcode_space + conditional_caps(" " + psuedo_op + "     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
     }
 
     fcb.length = 0;
@@ -501,7 +586,8 @@ function disem( mem, pc, dis, inTable )
             pc = next_pc( pc, 1 );
             address += read_memory(mem, pc);
             pc = next_pc( pc, 1 );
-            operand = "$" + address.toString(16).padStart(4,"0");
+            operand = generate_conditional_label(address); //"L" + address.toString(16).padStart(4,"0");
+            //label_table.push(address);
         break;
 
         case "ind":    /* indexed */
@@ -527,7 +613,8 @@ function disem( mem, pc, dis, inTable )
             address = read_memory(mem, pc);
             pc = next_pc( pc, 1 );
             address = pc + (address << 24 >> 24)
-            operand = "$" + address.toString(16).padStart(4,"0");
+            operand = generate_conditional_label(address); // "L" + address.toString(16).padStart(4,"0");
+            //label_table.push(address);
         break;
 
         case "rew":    /* relative word */
@@ -536,7 +623,8 @@ function disem( mem, pc, dis, inTable )
             address += read_memory(mem, pc);
             pc = next_pc( pc, 1 );
             address = pc + (address << 16 >> 16)
-            operand = "$" + address.toString(16).padStart(4,"0");
+            operand = generate_conditional_label(address); //"L" + address.toString(16).padStart(4,"0");
+            //label_table.push(address);
         break;
 
         case "r1":    /* tfr/exg mode */
@@ -650,7 +738,7 @@ function disem( mem, pc, dis, inTable )
     dis[origPC] = "";
     let opcode_space;
     let j;
-    
+
     if(list_opcodes) {
         if( origPC > pc )
         {
@@ -659,14 +747,14 @@ function disem( mem, pc, dis, inTable )
             {
                 dis[origPC] += read_memory(mem, i).toString(16).padStart(2,"0")
             }
-            
+
             j = 0;
         }
         else
         {
             j = origPC;
         }
-        
+
         for ( let i=j; i<pc; i++ )
         {
             dis[origPC] += read_memory(mem, i).toString(16).padStart(2,"0")
@@ -685,14 +773,14 @@ function disem( mem, pc, dis, inTable )
         {
             dis[i] = "";
         }
-        
+
         j = 0;
     }
     else
     {
         j = origPC+1;
     }
-    
+
     for( let i=j; i<pc; i++ )
     {
         dis[i] = "";
@@ -759,7 +847,11 @@ function index_decode( mem, pc, operand )
             case 0x0c:
                 value = read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "$" + value.toString(16).padStart(2,"0") + ",pc";
+
+                if(absIndPC)
+                    operand += "<" + ((value << 24) >> 24) + ",pc";
+                else
+                    operand += "<" + generate_conditional_label(pc + ((value << 24) >> 24)) + ",pcr";
                 break;
 
             case 0x0d:
@@ -767,7 +859,11 @@ function index_decode( mem, pc, operand )
                 pc = next_pc( pc, 1 );
                 value += read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "$" + value.toString(16).padStart(4,"0") + ",pc";
+
+                if(absIndPC)
+                    operand += ">" + ((value << 16) >> 16) + ",pc";
+                else
+                    operand += ">" + generate_conditional_label(pc + ((value << 16) >> 16)) + ",pcr";
                 break;
 
             case 0x11: operand += "[," + register + "++]"; break;
@@ -787,11 +883,15 @@ function index_decode( mem, pc, operand )
                 break;
 
             case 0x19:
+            case 0x1d:
                 value = read_memory(mem, pc) << 8;
                 pc = next_pc( pc, 1 );
                 value += read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "[$" + value.toString(16).padStart(4,"0") + "," + register + "]";
+                if(absIndPC)
+                    operand += ">[" + ((value << 16) >> 16) + ",pc]";
+                else
+                    operand += ">[" + generate_conditional_label(pc + ((value << 16) >> 16)) + ",pcr]";
                 break;
 
             case 0x1b: operand += "[d," + register + "]"; break;
@@ -799,15 +899,10 @@ function index_decode( mem, pc, operand )
             case 0x1c:
                 value = read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "[$" + value.toString(16).padStart(2,"0") + ",pc]";
-                break;
-
-            case 0x1d:
-                value = read_memory(mem, pc) << 8;
-                pc = next_pc( pc, 1 );
-                value += read_memory(mem, pc);
-                pc = next_pc( pc, 1 );
-                operand += "[$" + value.toString(16).padStart(4,"0") + ",pc]";
+                if(absIndPC)
+                    operand += "[<" + ((value << 24) >> 24) + ",pc]";
+                else
+                    operand += "[<" + generate_conditional_label(pc + ((value << 24) >> 24)) + ",pcr]";
                 break;
 
             case 0x07:

@@ -12,7 +12,7 @@
 <input onclick="newFile()" type="file" id="datafile" name="datafile" required minlength="4" maxlength="8" size="10" />
 <div style="margin-top:12px;"><label for="file_type">File Type:</label><input type="radio" id="raw" name="file_type" value="raw" checked="checked" onchange="disassemble()"><label for="html">Raw</label><input type="radio" id="decb" name="file_type" value="decb" onchange="disassemble()"></label><label for="css">DECB</label><input type="radio" id="os9" name="file_type" value="os9" onchange="disassemble()" hidden><label for="javascript" hidden>OS-9</label></div>
 <div style="margin-top:12px;"><label for="offset">Load offset:</label>
-<input type="text" id="offset" name="offset" value="0" onchange="disassemble()"></input>
+<input type="text" id="offset" name="offset" value="0" onchange="disassemble()">
 <font size="-1">Use '0x' for hexidecimal.</font></div>
 <div style="margin-top:12px;"><label for="transferList">Transfer Addresses:</label><br />
 <textarea id="transferList" name="transferList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…">0</textarea>
@@ -24,13 +24,17 @@
 <label for="noFollow">No Follow Addresses:</label><br />
 <textarea id="noFollow" name="noFollow" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
 <font size="-1">List of addressed that won't disassemble.</font>
-<div style="margin-top:12px;"><input type="checkbox" id="hd6309" name="hd6309" value="hd6309" onchange="disassemble()"><label for="hd6309">Support HD6309 opcodes</label></input>
+<div style="margin-top:12px;"><input type="checkbox" id="hd6309" name="hd6309" value="hd6309" onchange="disassemble()"><label for="hd6309">Support HD6309 opcodes</label>
 <br>
-<input type="checkbox" id="allCaps" name="allCaps" value="allCaps" onchange="disassemble()"><label for="allCaps">Capitalize disassembly</label></input>
+<input type="checkbox" id="allCaps" name="allCaps" value="allCaps" onchange="disassemble()"><label for="allCaps">Capitalize disassembly</label>
 <br>
-<input type="checkbox" id="listOpcodes" name="listOpcodes" value="listOpcodes" onchange="disassemble()" checked="true"><label for="listOpcodes">List opcodes</label></input>
+<input type="checkbox" id="listOpcodes" name="listOpcodes" value="listOpcodes" onchange="disassemble()" checked="true"><label for="listOpcodes">List opcodes</label>
 <br>
-<input type="checkbox" id="printAddress" name="printAddress" value="printAddress" onchange="disassemble()" checked="true"><label for="printAddress">List address</label></input>
+<input type="checkbox" id="printAddress" name="printAddress" value="printAddress" onchange="disassemble()" checked="true"><label for="printAddress">List address</label>
+<br>
+<input type="checkbox" id="genLabel" name="genLabel" value="genLabel" onchange="disassemble()" checked="true"><label for="genLabel">Generate labels</label>
+<br>
+<input type="checkbox" id="absIndPC" name="absIndPC" value="absIndPC" onchange="disassemble()"><label for="absIndPC">Absolute indexed PC offset</label>
 </div>
 <div style="margin-top:12px;">Copyright 2024 by tim lindner
 <br>

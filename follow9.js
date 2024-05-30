@@ -50,6 +50,7 @@ var print_address;
 var label_table, jump_table;
 var generate_label;
 var absIndPC;
+var label_aa;
 
 const m6809_exg_tfr = ["d", "x", "y", "u", "s", "pc", "??", "??", "a", "b", "cc", "dp", "??", "??", "??", "??" ];
 const h6309_exg_tfr = ["d", "x", "y", "u", "s", "pc", "w" ,"v", "a", "b", "cc", "dp", "0", "0", "e", "f"];
@@ -275,6 +276,19 @@ function disassemble() {
         }
     });
 
+    // fill label table associative array
+    label_aa = [];
+    let ltaa = document.getElementById("labelList").value.split(",");
+    ltaa.forEach((item) => {
+        let pair = item.split(";");
+        let label = pair[0];
+        let address = parseInt(pair[1]);
+        if(address != undefined)
+        {
+            label_aa[address] = pair[0];
+        }
+    });
+
     // Fill disassembly array
     let pc = transfers.pop();
     let dis = new Array;
@@ -381,7 +395,8 @@ function disassemble() {
             // label
             if( generate_label && label_table.includes(i))
             {
-                result += address_space + opcode_space + "L" + (i).toString(16).padStart(4,"0").toUpperCase() + "\r";
+                result += address_space + opcode_space + generate_conditional_label(i) + "\r";
+
             }
 
             // disassemble
@@ -417,8 +432,15 @@ function generate_conditional_label(address)
 
     if(generate_label)
     {
-        string = "L" + address.toString(16).padStart(4,"0").toUpperCase();
-        label_table.push(address);
+        if(label_aa[address] != undefined)
+        {
+            string =  label_aa[address]
+        }
+        else
+        {
+            string = "L" + address.toString(16).padStart(4,"0").toUpperCase();
+            label_table.push(address);
+        }
     }
     else
     {
@@ -455,7 +477,8 @@ function print_fcb(mem, fcb )
         {
             if(generate_label && label_table.includes(fcb[i]))
             {
-                result += address_space + opcode_space + "L" + fcb[i].toString(16).padStart(4,"0").toUpperCase() + "\r";
+                result += address_space + opcode_space + generate_conditional_label(fcb[i]) + "\r";
+
             }
 
             address = fcb[i];
@@ -473,7 +496,8 @@ function print_fcb(mem, fcb )
             let table = mem[fcb[i]] << 8;
             i += 1;
             table += mem[fcb[i]];
-            hex += optional_comma + "L" + table.toString(16).padStart(4,"0");
+            hex += optional_comma + generate_conditional_label(table);
+
             ascii += "";
             psuedo_op = "fdb";
         }

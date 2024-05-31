@@ -68,10 +68,12 @@ const off4 = [
  "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1"
 ];
 
-function newFile() {
+function newFile()
+{
     var input = document.getElementById("datafile");
 
-    input.onchange = e => {
+    input.onchange = e =>
+    {
 
         // getting a hold of the file reference
         var file = e.target.files[0];
@@ -81,14 +83,16 @@ function newFile() {
         reader.readAsArrayBuffer(file);
 
         // here we tell the reader what to do when it"s done reading...
-        reader.onload = readerEvent => {
+        reader.onload = readerEvent =>
+        {
             buffer = readerEvent.target.result; // this is the content!
             disassemble();
         }
     }
 }
 
-function disassemble() {
+function disassemble()
+{
     allow_6309_codes = document.getElementById("hd6309").checked;
     all_caps = document.getElementById("allCaps").checked;
     list_opcodes = document.getElementById("listOpcodes").checked;
@@ -99,7 +103,8 @@ function disassemble() {
     label_table = new Array;
     jump_table = new Array;
 
-    if(list_opcodes) {
+    if(list_opcodes)
+    {
         opcode_space = "                ";
     }
     else
@@ -107,7 +112,8 @@ function disassemble() {
         opcode_space = "";
     }
 
-    if(print_address) {
+    if(print_address)
+    {
         address_space = "     ";
     }
     else
@@ -119,7 +125,7 @@ function disassemble() {
     let view = new Uint8Array(buffer);
     let offset = parseInt(document.getElementById("offset").value)
 
-    if (view.length == 0)
+    if(view.length == 0)
     {
         document.getElementById("disassembly").value = "Data file empty."
         return;
@@ -128,14 +134,15 @@ function disassemble() {
     // build no follow array
     let no_follow = document.getElementById("noFollow").value.split(",");
 
-    for (let i = 0; i < no_follow.length; i++) {
+    for(let i = 0; i < no_follow.length; i++)
+    {
         no_follow[i] = parseInt(no_follow[i]);
     }
 
     // build transfer address array
     let transfers;
     let preTransfer = document.getElementById("transferList").value;
-    if (preTransfer != "")
+    if(preTransfer != "")
     {
         transfers = preTransfer.split(",");
 
@@ -158,7 +165,8 @@ function disassemble() {
         case "raw":
             // Load data into memory, offset by offset
 
-            for (let i=0; i<view.length; i++) {
+            for (let i=0; i<view.length; i++)
+            {
                 write_memory(memory,i+offset,view[i]);
             }
         break;
@@ -169,14 +177,21 @@ function disassemble() {
             let state = 0;
             let length, address;
 
-            while( i<view.length ) {
-                switch( state ) {
+            while( i<view.length )
+            {
+                switch( state )
+                {
                     case 0:
-                        if( view[i] == 0 ) {
+                        if(view[i] == 0)
+                        {
                             state = 1;
-                        } else if (view[i] == 0xff) {
+                        }
+                        else if(view[i] == 0xff)
+                        {
                             state = 6;
-                        } else {
+                        }
+                        else
+                        {
                             document.getElementById("disassembly").value = "Malformed DECB binary. Wrong preamble."
                             return;
                         }
@@ -206,7 +221,8 @@ function disassemble() {
                         write_memory(memory,address+offset,view[i]);
                         length -= 1;
 
-                        if(length==0) {
+                        if(length==0)
+                        {
                             state = 0;
                         }
 
@@ -222,7 +238,8 @@ function disassemble() {
                         address += view[i];
                         state = 8;
 
-                        if( address != 0 ) {
+                        if(address != 0)
+                        {
                             document.getElementById("disassembly").value = "Malformed DECB postamble."
                             return;
                         }
@@ -260,7 +277,8 @@ function disassemble() {
 
     // Add transfer table addresses to transfer array
     let ttl = document.getElementById("transferTable").value.split(",");
-    ttl.forEach((item) => {
+    ttl.forEach((item) =>
+    {
         let range = item.split(";");
         let start = parseInt(range[0]);
         let length = parseInt(range[1]);
@@ -286,7 +304,8 @@ function disassemble() {
     // fill label table associative array
     label_aa = [];
     let ltaa = document.getElementById("labelList").value.split(",");
-    ltaa.forEach((item) => {
+    ltaa.forEach((item) =>
+    {
         let pair = item.split(";");
         let address = parseInt(pair[1]);
         if(address != undefined && (!isNaN(address)))
@@ -300,8 +319,10 @@ function disassemble() {
     let pc = transfers.pop();
     let dis = new Array;
 
-    while(pc != undefined) {
-        if( memory[pc] == undefined ) {
+    while(pc != undefined)
+    {
+        if(memory[pc] == undefined)
+        {
             // unasigned memory, move on
             pc = transfers.pop();
         }
@@ -317,7 +338,7 @@ function disassemble() {
             // disassemble new PC
             let address, pc_mode;
 
-            if( allow_6309_codes )
+            if(allow_6309_codes)
                 [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1);
             else
                 [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6809_p1);
@@ -329,7 +350,7 @@ function disassemble() {
                     pc = address;
                 break;
                 case "pc_bra":     /* branch, or subroutine jump */
-                    if( address != undefined)
+                    if(address != undefined)
                     {
                         transfers.push(address);
                     }
@@ -345,7 +366,7 @@ function disassemble() {
                     pc = transfers.pop();
                 break;
                 case "pc_pul":     /* possible end of execution */
-                    if( (read_memory(memory, pc-1) & 0x80) == 0x80)
+                    if((read_memory(memory, pc-1) & 0x80) == 0x80)
                     {
                         // PC pulled, at end of subroutine
                         pc = transfers.pop();
@@ -371,8 +392,9 @@ function disassemble() {
     // print out of bounds labels as equates
     if(generate_label)
     {
-        label_table.forEach((item) => {
-            if( memory[item] == undefined )
+        label_table.forEach((item) =>
+        {
+            if(memory[item] == undefined)
             {
                 result += address_space + opcode_space + generate_conditional_label(item) + conditional_caps(" equ $" + item.toString(16).padStart(4,"0")) + "\r";
             }
@@ -383,19 +405,20 @@ function disassemble() {
     state = 0;
     let fcb = new Array;
 
-    for( let i=0; i<65536; i++ ) {
-
-        if(memory[i] == undefined ) {
+    for( let i=0; i<65536; i++ )
+    {
+        if(memory[i] == undefined)
+        {
             print_fcb(memory, fcb);
 
             // Nothing to do if memory is unassigned
             state = 0;
         }
-        else if( (dis[i] != undefined))
+        else if((dis[i] != undefined))
         {
             print_fcb(memory, fcb);
 
-            if(state == 0 )
+            if(state == 0)
             {
                 // print org statement if there is a gap
                 state = 1;
@@ -403,13 +426,13 @@ function disassemble() {
             }
 
             // label
-            if( generate_label && label_table.includes(i))
+            if(generate_label && label_table.includes(i))
             {
                 result += address_space + opcode_space + generate_conditional_label(i) + "\r";
             }
 
             // disassemble
-            if(dis[i] != "" )
+            if(dis[i] != "")
             {
                 if(print_address) result += conditional_caps((i).toString(16).padStart(4,"0")).padEnd(5, " ");
 
@@ -418,7 +441,7 @@ function disassemble() {
         }
         else
         {
-            if(state == 0 )
+            if(state == 0)
             {
                 // print org statement if there is a gap
                 state = 1;
@@ -534,7 +557,7 @@ function print_fcb(mem, fcb )
         fdb = jump_table.includes(fcb[i])
     }
 
-    if( j!= 0 )
+    if(j!= 0)
     {
         if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
         result += opcode_space + conditional_caps(" " + psuedo_op + "     " + hex.padEnd(31," ")) + " " + ascii.padEnd(8," ") + "\r";
@@ -565,7 +588,7 @@ function disem( mem, pc, dis, inTable )
     let operand = "";
 
     // Handle opcode prefix
-    if( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11))
+    if((read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11))
     {
         while( (read_memory(mem, pc) == 0x10) || (read_memory(mem, pc) == 0x11) )
         {
@@ -584,7 +607,8 @@ function disem( mem, pc, dis, inTable )
     mnenonmic = current[0];
     pc = next_pc( pc, 1 );
 
-    switch( current[1] ){
+    switch( current[1] )
+    {
         case "nom":    /* no mode */
             operand = "???"
         break;
@@ -626,7 +650,7 @@ function disem( mem, pc, dis, inTable )
             if((read_memory(mem,origPC) == 0xad) && (read_memory(mem,origPC+1) == 0x9f))
             {
                 // JSR Indexed
-                if( (mem[address] != undefined) && (mem[address+1] != undefined))
+                if((mem[address] != undefined) && (mem[address+1] != undefined))
                 {
                     let temp;
                     temp = mem[address] << 8;
@@ -675,20 +699,24 @@ function disem( mem, pc, dis, inTable )
         case "r3":    /* pul/psh user */
             address = read_memory(mem, pc);
             pc = next_pc( pc, 1 );
-            if( address == 0 ) {
+            if(address == 0)
+            {
                 operand = "$00"
-            } else {
-                if( address & 0x80 ) operand += "pc,";
-                if( address & 0x40 ) {
-                    if( current[1] == "r2") operand += "u,";
-                    if( current[1] == "r3") operand += "s,";
+            }
+            else
+            {
+                if(address & 0x80) operand += "pc,";
+                if(address & 0x40)
+                {
+                    if(current[1] == "r2") operand += "u,";
+                    if(current[1] == "r3") operand += "s,";
                 }
-                if( address & 0x20 ) operand += "y";
-                if( address & 0x10 ) operand += "x,";
-                if( address & 0x08 ) operand += "dp,";
-                if( address & 0x04 ) operand += "b,";
-                if( address & 0x02 ) operand += "a,";
-                if( address & 0x01 ) operand += "cc,";
+                if(address & 0x20) operand += "y";
+                if(address & 0x10) operand += "x,";
+                if(address & 0x08) operand += "dp,";
+                if(address & 0x04) operand += "b,";
+                if(address & 0x02) operand += "a,";
+                if(address & 0x01) operand += "cc,";
                 operand = operand.slice(0, -1);
             }
         break;
@@ -770,8 +798,9 @@ function disem( mem, pc, dis, inTable )
     let opcode_space;
     let j;
 
-    if(list_opcodes) {
-        if( origPC > pc )
+    if(list_opcodes)
+    {
+        if(origPC > pc)
         {
             // handle wrap around
             for ( let i=origPC; i<0x10000; i++ )
@@ -797,7 +826,7 @@ function disem( mem, pc, dis, inTable )
     dis[origPC] += " " + (mnenonmic.padEnd(8, " ") + operand).trim();
 
     // other memory bytes are set to empty string to suppress printing
-    if( origPC+1 > pc )
+    if(origPC+1 > pc)
     {
         // handle wrap around
         for ( let i=origPC+1; i<0x10000; i++ )
@@ -822,9 +851,12 @@ function disem( mem, pc, dis, inTable )
 
 function read_memory(mem, pc)
 {
-    if(mem[pc]==undefined){
+    if(mem[pc]==undefined)
+    {
         return 0;
-    } else {
+    }
+    else
+    {
         return mem[pc];
     }
 }
@@ -834,7 +866,8 @@ function write_memory(mem, address, value )
     mem[address&0xffff] = value;
 }
 
-function next_pc( pc, count ) {
+function next_pc( pc, count )
+{
     pc += count;
     pc &= 0xffff;
     return pc;
@@ -940,7 +973,9 @@ function index_decode( mem, pc, operand )
                 if(allow_6309_codes)
                 {
                     operand += "e," + register;
-                } else {
+                }
+                else
+                {
                     operand += "???";
                 }
                 break;
@@ -949,7 +984,9 @@ function index_decode( mem, pc, operand )
                 if(allow_6309_codes)
                 {
                     operand += "[e," + register + "]";
-                } else {
+                }
+                else
+                {
                     operand += "???";
                 }
                 break;
@@ -958,7 +995,9 @@ function index_decode( mem, pc, operand )
                 if(allow_6309_codes)
                 {
                     operand += "f," + register;
-                } else {
+                }
+                else
+                {
                     operand += "???";
                 }
                 break;
@@ -967,7 +1006,9 @@ function index_decode( mem, pc, operand )
                 if(allow_6309_codes)
                 {
                     operand += "[f," + register + "]";
-                } else {
+                }
+                else
+                {
                     operand += "???";
                 }
                 break;
@@ -976,7 +1017,9 @@ function index_decode( mem, pc, operand )
                 if(allow_6309_codes)
                 {
                     operand += "w," + register;
-                } else {
+                }
+                else
+                {
                     operand += "???";
                 }
                 break;
@@ -985,7 +1028,9 @@ function index_decode( mem, pc, operand )
                 if(allow_6309_codes)
                 {
                     operand += "[w," + register + "]";
-                } else {
+                }
+                else
+                {
                     operand += "???";
                 }
                 break;
@@ -1028,7 +1073,9 @@ function index_decode( mem, pc, operand )
                         default:   operand += "???"; break;
 
                     }
-                } else {
+                }
+                else
+                {
                     operand += "???"; break;
                 }
         }
@@ -1042,7 +1089,7 @@ function index_decode( mem, pc, operand )
 }
 
 const opcodes_6809_p2 = [
-// $00
+// opcodes_6809_p2 $00
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1059,7 +1106,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $10
+// opcodes_6809_p2 $10
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1076,7 +1123,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $20
+// opcodes_6809_p2 $20
 ["ill", "nom", "pc_nop"],
 ["lbrn", "rew", "pc_nop"],
 ["lbhi", "rew", "pc_bra"],
@@ -1093,7 +1140,7 @@ const opcodes_6809_p2 = [
 ["lblt", "rew", "pc_bra"],
 ["lbgt", "rew", "pc_bra"],
 ["lble", "rew", "pc_bra"],
-// $30
+// opcodes_6809_p2 $30
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1110,7 +1157,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["swi2", "imp", "pc_nop"],
-// $40
+// opcodes_6809_p2 $40
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1127,7 +1174,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $50
+// opcodes_6809_p2 $50
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1144,7 +1191,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $60
+// opcodes_6809_p2 $60
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1161,7 +1208,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $70
+// opcodes_6809_p2 $70
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1178,7 +1225,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $80
+// opcodes_6809_p2 $80
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1195,7 +1242,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $90
+// opcodes_6809_p2 $90
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1212,7 +1259,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "dir", "pc_nop"],
 ["sty", "dir", "pc_nop"],
-// $A0
+// opcodes_6809_p2 $A0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1229,7 +1276,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "ind", "pc_nop"],
 ["sty", "ind", "pc_nop"],
-// $B0
+// opcodes_6809_p2 $B0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1246,7 +1293,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "ext", "pc_nop"],
 ["sty", "ext", "pc_nop"],
-// $C0
+// opcodes_6809_p2 $C0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1263,7 +1310,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["lds", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $D0
+// opcodes_6809_p2 $D0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1280,7 +1327,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["lds", "dir", "pc_nop"],
 ["sts", "dir", "pc_nop"],
-// $E0
+// opcodes_6809_p2 $E0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1297,7 +1344,7 @@ const opcodes_6809_p2 = [
 ["ill", "nom", "pc_nop"],
 ["lds", "ind", "pc_nop"],
 ["sts", "ind", "pc_nop"],
-// $F0
+// opcodes_6809_p2 $F0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1317,6 +1364,7 @@ const opcodes_6809_p2 = [
 ];
 
 const opcodes_6809_p3 = [
+// opcodes_6809_p3 $00
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1333,6 +1381,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $10
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1349,6 +1398,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $20
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1365,6 +1415,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $30
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1381,6 +1432,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["swi3", "imp", "pc_nop"],
+// opcodes_6809_p3 $40
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1397,6 +1449,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $50
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1413,6 +1466,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $60
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1429,6 +1483,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $70
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1445,6 +1500,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $80
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1461,6 +1517,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $90
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1477,6 +1534,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $A0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1493,6 +1551,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $B0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1509,6 +1568,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $C0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1525,6 +1585,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $D0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1541,6 +1602,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $E0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1557,6 +1619,7 @@ const opcodes_6809_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6809_p3 $F0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1576,7 +1639,7 @@ const opcodes_6809_p3 = [
 ];
 
 const opcodes_6809_p1 = [
-// $00
+// opcodes_6809_p1 $00
 ["neg", "dir", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1593,7 +1656,7 @@ const opcodes_6809_p1 = [
 ["tst", "dir", "pc_nop"],
 ["jmp", "dir", "pc_jmp"],
 ["clr", "dir", "pc_nop"],
-// $10
+// opcodes_6809_p1 $10
 ["ill", opcodes_6809_p2, "pc_nop"],
 ["ill", opcodes_6809_p3, "pc_nop"],
 ["nop", "imp", "pc_nop"],
@@ -1610,7 +1673,7 @@ const opcodes_6809_p1 = [
 ["sex", "imp", "pc_nop"],
 ["exg", "r1", "pc_nop"],
 ["tfr", "r1", "pc_nop"],
-// $20
+// opcodes_6809_p1 $20
 ["bra", "reb", "pc_jmp"],
 ["brn", "reb", "pc_nop"],
 ["bhi", "reb", "pc_bra"],
@@ -1627,7 +1690,7 @@ const opcodes_6809_p1 = [
 ["blt", "reb", "pc_bra"],
 ["bgt", "reb", "pc_bra"],
 ["ble", "reb", "pc_bra"],
-// $30
+// opcodes_6809_p1 $30
 ["leax", "ind", "pc_nop"],
 ["leay", "ind", "pc_nop"],
 ["leas", "ind", "pc_nop"],
@@ -1644,7 +1707,7 @@ const opcodes_6809_p1 = [
 ["mul", "imp", "pc_nop"],
 ["reset", "imp", "pc_nop"],
 ["swi", "imp", "pc_nop"],
-// $40
+// opcodes_6809_p1 $40
 ["nega", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1661,7 +1724,7 @@ const opcodes_6809_p1 = [
 ["tsta", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clra", "imp", "pc_nop"],
-// $50
+// opcodes_6809_p1 $50
 ["negb", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1678,7 +1741,7 @@ const opcodes_6809_p1 = [
 ["tstb", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clrb", "imp", "pc_nop"],
-// $60
+// opcodes_6809_p1 $60
 ["neg", "ind", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1695,7 +1758,7 @@ const opcodes_6809_p1 = [
 ["tst", "ind", "pc_nop"],
 ["jmp", "ind", "pc_jmp"],
 ["clr", "ind", "pc_nop"],
-// $70
+// opcodes_6809_p1 $70
 ["neg", "ext", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1712,7 +1775,7 @@ const opcodes_6809_p1 = [
 ["tst", "ext", "pc_nop"],
 ["jmp", "ext", "pc_jmp"],
 ["clr", "ext", "pc_nop"],
-// $80
+// opcodes_6809_p1 $80
 ["suba", "imb", "pc_nop"],
 ["cmpa", "imb", "pc_nop"],
 ["sbca", "imb", "pc_nop"],
@@ -1729,7 +1792,7 @@ const opcodes_6809_p1 = [
 ["bsr", "reb", "pc_bra"],
 ["ldx", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $90
+// opcodes_6809_p1 $90
 ["suba", "dir", "pc_nop"],
 ["cmpa", "dir", "pc_nop"],
 ["sbca", "dir", "pc_nop"],
@@ -1746,7 +1809,7 @@ const opcodes_6809_p1 = [
 ["jsr", "dir", "pc_bra"],
 ["ldx", "dir", "pc_nop"],
 ["stx", "dir", "pc_nop"],
-// $A0
+// opcodes_6809_p1 $A0
 ["suba", "ind", "pc_nop"],
 ["cmpa", "ind", "pc_nop"],
 ["sbca", "ind", "pc_nop"],
@@ -1763,7 +1826,7 @@ const opcodes_6809_p1 = [
 ["jsr", "ind", "pc_bra"],
 ["ldx", "ind", "pc_nop"],
 ["stx", "ind", "pc_nop"],
-// $B0
+// opcodes_6809_p1 $B0
 ["suba", "ext", "pc_nop"],
 ["cmpa", "ext", "pc_nop"],
 ["sbca", "ext", "pc_nop"],
@@ -1780,7 +1843,7 @@ const opcodes_6809_p1 = [
 ["jsr", "ext", "pc_bra"],
 ["ldx", "ext", "pc_nop"],
 ["stx", "ext", "pc_nop"],
-// $C0
+// opcodes_6809_p1 $C0
 ["subb", "imb", "pc_nop"],
 ["cmpb", "imb", "pc_nop"],
 ["sbcb", "imb", "pc_nop"],
@@ -1797,7 +1860,7 @@ const opcodes_6809_p1 = [
 ["ill", "nom", "pc_nop"],
 ["ldu", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
-// $D0
+// opcodes_6809_p1 $D0
 ["subb", "dir", "pc_nop"],
 ["cmpb", "dir", "pc_nop"],
 ["sbcb", "dir", "pc_nop"],
@@ -1814,7 +1877,7 @@ const opcodes_6809_p1 = [
 ["std", "dir", "pc_nop"],
 ["ldu", "dir", "pc_nop"],
 ["stu", "dir", "pc_nop"],
-// $E0
+// opcodes_6809_p1 $E0
 ["subb", "ind", "pc_nop"],
 ["cmpb", "ind", "pc_nop"],
 ["sbcb", "ind", "pc_nop"],
@@ -1831,7 +1894,7 @@ const opcodes_6809_p1 = [
 ["std", "ind", "pc_nop"],
 ["ldu", "ind", "pc_nop"],
 ["stu", "ind", "pc_nop"],
-// $F0
+// opcodes_6809_p1 $F0
 ["subb", "ext", "pc_nop"],
 ["cmpb", "ext", "pc_nop"],
 ["sbcb", "ext", "pc_nop"],
@@ -1851,6 +1914,7 @@ const opcodes_6809_p1 = [
 ];
 
 const opcodes_6309_p2 = [
+// opcodes_6309_p2 $00
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1867,6 +1931,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p2 $10
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1883,6 +1948,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p2 $20
 ["ill", "nom", "pc_nop"],
 ["lbrn", "rew", "pc_nop"],
 ["lbhi", "rew", "pc_bra"],
@@ -1899,6 +1965,7 @@ const opcodes_6309_p2 = [
 ["lblt", "rew", "pc_bra"],
 ["lbgt", "rew", "pc_bra"],
 ["lble", "rew", "pc_bra"],
+// opcodes_6309_p2 $30
 ["addr", "r1", "pc_nop"],
 ["adcr", "r1", "pc_nop"],
 ["subr", "r1", "pc_nop"],
@@ -1915,6 +1982,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["swi2", "imp", "pc_nop"],
+// opcodes_6309_p2 $40
 ["negd", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1931,6 +1999,7 @@ const opcodes_6309_p2 = [
 ["tstd", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clrd", "imp", "pc_nop"],
+// opcodes_6309_p2 $50
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1947,6 +2016,7 @@ const opcodes_6309_p2 = [
 ["tstw", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clrw", "imp", "pc_nop"],
+// opcodes_6309_p2 $60
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1963,6 +2033,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p2 $70
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -1979,6 +2050,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p2 $80
 ["subw", "imw", "pc_nop"],
 ["cmpw", "imw", "pc_nop"],
 ["sbcd", "imw", "pc_nop"],
@@ -1995,6 +2067,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p2 $90
 ["subw", "dir", "pc_nop"],
 ["cmpw", "dir", "pc_nop"],
 ["sbcd", "dir", "pc_nop"],
@@ -2011,6 +2084,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "dir", "pc_nop"],
 ["sty", "dir", "pc_nop"],
+// opcodes_6309_p2 $A0
 ["subw", "ind", "pc_nop"],
 ["cmpw", "ind", "pc_nop"],
 ["sbcd", "ind", "pc_nop"],
@@ -2027,6 +2101,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "ind", "pc_nop"],
 ["sty", "ind", "pc_nop"],
+// opcodes_6309_p2 $B0
 ["subw", "ext", "pc_nop"],
 ["cmpw", "ext", "pc_nop"],
 ["sbcd", "ext", "pc_nop"],
@@ -2043,6 +2118,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["ldy", "ext", "pc_nop"],
 ["sty", "ext", "pc_nop"],
+// opcodes_6309_p2 $C0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2059,6 +2135,7 @@ const opcodes_6309_p2 = [
 ["ill", "nom", "pc_nop"],
 ["lds", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p2 $D0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2075,6 +2152,7 @@ const opcodes_6309_p2 = [
 ["stq", "dir", "pc_nop"],
 ["lds", "dir", "pc_nop"],
 ["sts", "dir", "pc_nop"],
+// opcodes_6309_p2 $E0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2091,6 +2169,7 @@ const opcodes_6309_p2 = [
 ["stq", "ind", "pc_nop"],
 ["lds", "ind", "pc_nop"],
 ["sts", "ind", "pc_nop"],
+// opcodes_6309_p2 $F0
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2110,6 +2189,7 @@ const opcodes_6309_p2 = [
 ];
 
 const opcodes_6309_p3 = [
+// opcodes_6309_p3 $00
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2126,6 +2206,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $10
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2142,6 +2223,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $20
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2158,6 +2240,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $30
 ["band", "bt", "pc_nop"],
 ["biand", "bt", "pc_nop"],
 ["bor", "bt", "pc_nop"],
@@ -2174,6 +2257,7 @@ const opcodes_6309_p3 = [
 ["ldmd", "imb", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["swi3", "imp", "pc_nop"],
+// opcodes_6309_p3 $40
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2190,6 +2274,7 @@ const opcodes_6309_p3 = [
 ["tste", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clre", "imp", "pc_nop"],
+// opcodes_6309_p3 $50
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2206,6 +2291,7 @@ const opcodes_6309_p3 = [
 ["tstf", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clrf", "imp", "pc_nop"],
+// opcodes_6309_p3 $60
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2222,6 +2308,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $70
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2238,6 +2325,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $80
 ["sube", "imb", "pc_nop"],
 ["cmpe", "imb", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2254,6 +2342,7 @@ const opcodes_6309_p3 = [
 ["divd", "imb", "pc_nop"],
 ["divq", "imw", "pc_nop"],
 ["muld", "imw", "pc_nop"],
+// opcodes_6309_p3 $90
 ["sube", "dir", "pc_nop"],
 ["cmpe", "dir", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2270,6 +2359,7 @@ const opcodes_6309_p3 = [
 ["divd", "dir", "pc_nop"],
 ["divq", "dir", "pc_nop"],
 ["muld", "dir", "pc_nop"],
+// opcodes_6309_p3 $A0
 ["sube", "ind", "pc_nop"],
 ["cmpe", "ind", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2286,6 +2376,7 @@ const opcodes_6309_p3 = [
 ["divd", "ind", "pc_nop"],
 ["divq", "ind", "pc_nop"],
 ["muld", "ind", "pc_nop"],
+// opcodes_6309_p3 $B0
 ["sube", "ext", "pc_nop"],
 ["cmpe", "ext", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2302,6 +2393,7 @@ const opcodes_6309_p3 = [
 ["divd", "ext", "pc_nop"],
 ["divq", "ext", "pc_nop"],
 ["muld", "ext", "pc_nop"],
+// opcodes_6309_p3 $C0
 ["subf", "imb", "pc_nop"],
 ["cmpf", "imb", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2318,6 +2410,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $D0
 ["subf", "dir", "pc_nop"],
 ["cmpf", "dir", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2334,6 +2427,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $E0
 ["subf", "ind", "pc_nop"],
 ["cmpf", "ind", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2350,6 +2444,7 @@ const opcodes_6309_p3 = [
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p3 $F0
 ["subf", "ext", "pc_nop"],
 ["cmpf", "ext", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2385,7 +2480,7 @@ const opcodes_6309_p1 = [
 ["tst", "dir", "pc_nop"],
 ["jmp", "dir", "pc_jmp"],
 ["clr", "dir", "pc_nop"],
-// $10
+// opcodes_6309_p1 $10
 ["ill", opcodes_6309_p2, "pc_nop"],
 ["ill", opcodes_6309_p3, "pc_nop"],
 ["nop", "imp", "pc_nop"],
@@ -2402,6 +2497,7 @@ const opcodes_6309_p1 = [
 ["sex", "imp", "pc_nop"],
 ["exg", "r1", "pc_nop"],
 ["tfr", "r1", "pc_nop"],
+// opcodes_6309_p1 $20
 ["bra", "reb", "pc_jmp"],
 ["brn", "reb", "pc_nop"],
 ["bhi", "reb", "pc_bra"],
@@ -2418,6 +2514,7 @@ const opcodes_6309_p1 = [
 ["blt", "reb", "pc_bra"],
 ["bgt", "reb", "pc_bra"],
 ["ble", "reb", "pc_bra"],
+// opcodes_6309_p1 $30
 ["leax", "ind", "pc_nop"],
 ["leay", "ind", "pc_nop"],
 ["leas", "ind", "pc_nop"],
@@ -2434,6 +2531,7 @@ const opcodes_6309_p1 = [
 ["mul", "imp", "pc_nop"],
 ["reset", "imp", "pc_nop"],
 ["swi", "imp", "pc_nop"],
+// opcodes_6309_p1 $40
 ["nega", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2450,6 +2548,7 @@ const opcodes_6309_p1 = [
 ["tsta", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clra", "imp", "pc_nop"],
+// opcodes_6309_p1 $50
 ["negb", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["ill", "nom", "pc_nop"],
@@ -2466,6 +2565,7 @@ const opcodes_6309_p1 = [
 ["tstb", "imp", "pc_nop"],
 ["ill", "nom", "pc_nop"],
 ["clrb", "imp", "pc_nop"],
+// opcodes_6309_p1 $60
 ["neg", "ind", "pc_nop"],
 ["oim", "bi", "pc_nop"],
 ["aim", "bi", "pc_nop"],
@@ -2482,6 +2582,7 @@ const opcodes_6309_p1 = [
 ["tst", "ind", "pc_nop"],
 ["jmp", "ind", "pc_jmp"],
 ["clr", "ind", "pc_nop"],
+// opcodes_6309_p1 $70
 ["neg", "ext", "pc_nop"],
 ["oim", "be", "pc_nop"],
 ["aim", "be", "pc_nop"],
@@ -2498,6 +2599,7 @@ const opcodes_6309_p1 = [
 ["tst", "ext", "pc_nop"],
 ["jmp", "ext", "pc_jmp"],
 ["clr", "ext", "pc_nop"],
+// opcodes_6309_p1 $80
 ["suba", "imb", "pc_nop"],
 ["cmpa", "imb", "pc_nop"],
 ["sbca", "imb", "pc_nop"],
@@ -2514,6 +2616,7 @@ const opcodes_6309_p1 = [
 ["bsr", "reb", "pc_bra"],
 ["ldx", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p1 $90
 ["suba", "dir", "pc_nop"],
 ["cmpa", "dir", "pc_nop"],
 ["sbca", "dir", "pc_nop"],
@@ -2530,6 +2633,7 @@ const opcodes_6309_p1 = [
 ["jsr", "dir", "pc_bra"],
 ["ldx", "dir", "pc_nop"],
 ["stx", "dir", "pc_nop"],
+// opcodes_6309_p1 $A0
 ["suba", "ind", "pc_nop"],
 ["cmpa", "ind", "pc_nop"],
 ["sbca", "ind", "pc_nop"],
@@ -2546,6 +2650,7 @@ const opcodes_6309_p1 = [
 ["jsr", "ind", "pc_bra"],
 ["ldx", "ind", "pc_nop"],
 ["stx", "ind", "pc_nop"],
+// opcodes_6309_p1 $B0
 ["suba", "ext", "pc_nop"],
 ["cmpa", "ext", "pc_nop"],
 ["sbca", "ext", "pc_nop"],
@@ -2562,6 +2667,7 @@ const opcodes_6309_p1 = [
 ["jsr", "ext", "pc_bra"],
 ["ldx", "ext", "pc_nop"],
 ["stx", "ext", "pc_nop"],
+// opcodes_6309_p1 $C0
 ["subb", "imb", "pc_nop"],
 ["cmpb", "imb", "pc_nop"],
 ["sbcb", "imb", "pc_nop"],
@@ -2578,6 +2684,7 @@ const opcodes_6309_p1 = [
 ["ldq", "iml", "pc_nop"],
 ["ldu", "imw", "pc_nop"],
 ["ill", "nom", "pc_nop"],
+// opcodes_6309_p1 $D0
 ["subb", "dir", "pc_nop"],
 ["cmpb", "dir", "pc_nop"],
 ["sbcb", "dir", "pc_nop"],
@@ -2594,6 +2701,7 @@ const opcodes_6309_p1 = [
 ["std", "dir", "pc_nop"],
 ["ldu", "dir", "pc_nop"],
 ["stu", "dir", "pc_nop"],
+// opcodes_6309_p1 $E0
 ["subb", "ind", "pc_nop"],
 ["cmpb", "ind", "pc_nop"],
 ["sbcb", "ind", "pc_nop"],
@@ -2610,6 +2718,7 @@ const opcodes_6309_p1 = [
 ["std", "ind", "pc_nop"],
 ["ldu", "ind", "pc_nop"],
 ["stu", "ind", "pc_nop"],
+// opcodes_6309_p1 $F0
 ["subb", "ext", "pc_nop"],
 ["cmpb", "ext", "pc_nop"],
 ["sbcb", "ext", "pc_nop"],

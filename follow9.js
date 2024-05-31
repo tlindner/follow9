@@ -141,14 +141,17 @@ function disassemble() {
 
         for (let i = 0; i < transfers.length; i++) {
             transfers[i] = parseInt(transfers[i]);
-            label_table.push(transfers[i]);
+
+            if((transfers[i] != undefined) || (!isNan(transfers[i])))
+            {
+                label_table.push(transfers[i]);
+            }
         }
     }
     else
     {
         transfers = new Array;
     }
-
 
     switch(document.querySelector("input[name=file_type]:checked").value)
     {
@@ -261,19 +264,23 @@ function disassemble() {
         let range = item.split(";");
         let start = parseInt(range[0]);
         let length = parseInt(range[1]);
-        label_table.push(start);
 
-        for( let i=start; i<start+length; i+=2 )
-        {
-            let address = read_memory(memory,i) << 8;
-            address += read_memory(memory,i+1);
-            if(address != undefined)
+            if(start != undefined && (!isNaN(start)))
             {
-                transfers.push(address);
-                label_table.push(address);
-                jump_table.push(i);
+                label_table.push(start);
+
+                for( let i=start; i<start+length; i+=2 )
+                {
+                    let address = read_memory(memory,i) << 8;
+                    address += read_memory(memory,i+1);
+                    if(address != undefined && (!isNaN(address)))
+                    {
+                        transfers.push(address);
+                        label_table.push(address);
+                        jump_table.push(i);
+                    }
+                }
             }
-        }
     });
 
     // fill label table associative array
@@ -281,9 +288,8 @@ function disassemble() {
     let ltaa = document.getElementById("labelList").value.split(",");
     ltaa.forEach((item) => {
         let pair = item.split(";");
-        let label = pair[0];
         let address = parseInt(pair[1]);
-        if(address != undefined)
+        if(address != undefined && (!isNaN(address)))
         {
             label_aa[address] = pair[0];
             label_table.push(address);
@@ -363,12 +369,15 @@ function disassemble() {
     label_table = [...new Set(label_table)].sort();
 
     // print out of bounds labels as equates
-    label_table.forEach((item) => {
-        if( memory[item] == undefined )
-        {
-            result += address_space + opcode_space + generate_conditional_label(item) + conditional_caps(" equ $" + item.toString(16).padStart(4,"0")) + "\r";
-        }
-    });
+    if(generate_label)
+    {
+        label_table.forEach((item) => {
+            if( memory[item] == undefined )
+            {
+                result += address_space + opcode_space + generate_conditional_label(item) + conditional_caps(" equ $" + item.toString(16).padStart(4,"0")) + "\r";
+            }
+        });
+    }
 
     // pretty print disassembly
     state = 0;
@@ -434,7 +443,7 @@ function generate_conditional_label(address)
     {
         if(label_aa[address] != undefined)
         {
-            string =  label_aa[address]
+            string =  label_aa[address];
         }
         else
         {
@@ -988,7 +997,7 @@ function index_decode( mem, pc, operand )
                     pc = next_pc( pc, 1 );
                     value += read_memory(mem, pc);
                     pc = next_pc( pc, 1 );
-                    operand += "[$" + value.toString(16).padStart(4,"0") + "]";
+                    operand += "[" + generate_conditional_label(value) + "]";
                 }
                 else if(allow_6309_codes)
                 {

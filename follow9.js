@@ -123,7 +123,7 @@ function disassemble()
 
     let memory = new Array(65536);
     let view = new Uint8Array(buffer);
-    let offset = parseInt(document.getElementById("offset").value)
+    let offset = parseHexInt(document.getElementById("offset").value)
 
     if(view.length == 0)
     {
@@ -136,7 +136,7 @@ function disassemble()
 
     for(let i = 0; i < no_follow.length; i++)
     {
-        no_follow[i] = parseInt(no_follow[i]);
+        no_follow[i] = parseHexInt(no_follow[i]);
     }
 
     // build transfer address array
@@ -147,7 +147,7 @@ function disassemble()
         transfers = preTransfer.split(",");
 
         for (let i = 0; i < transfers.length; i++) {
-            transfers[i] = parseInt(transfers[i]);
+            transfers[i] = parseHexInt(transfers[i]);
 
             if((transfers[i] != undefined) || (!isNan(transfers[i])))
             {
@@ -280,37 +280,44 @@ function disassemble()
     ttl.forEach((item) =>
     {
         let range = item.split(";");
-        let start = parseInt(range[0]);
-        let length = parseInt(range[1]);
 
-            if(start != undefined && (!isNaN(start)))
-            {
-                label_table.push(start);
+        if(range[0] && range[1])
+        {
+            let start = parseHexInt(range[0]);
+            let length = parseHexInt(range[1]);
 
-                for( let i=start; i<start+length; i+=2 )
+                if(start != undefined && (!isNaN(start)))
                 {
-                    let address = read_memory(memory,i) << 8;
-                    address += read_memory(memory,i+1);
-                    if(address != undefined && (!isNaN(address)))
+                    label_table.push(start);
+
+                    for( let i=start; i<start+length; i+=2 )
                     {
-                        transfers.push(address);
-                        label_table.push(address);
-                        jump_table.push(i);
+                        let address = read_memory(memory,i) << 8;
+                        address += read_memory(memory,i+1);
+                        if(address != undefined && (!isNaN(address)))
+                        {
+                            transfers.push(address);
+                            label_table.push(address);
+                            jump_table.push(i);
+                        }
                     }
                 }
             }
     });
 
     // fill label table associative array
+    var re = /(\S+)\s+equ\s+(\S+)/i;
     label_aa = [];
-    let ltaa = document.getElementById("labelList").value.split(",");
+    let ltaa = document.getElementById("labelList").value.split("\n");
     ltaa.forEach((item) =>
     {
-        let pair = item.split(";");
-        let address = parseInt(pair[1]);
-        if(address != undefined && (!isNaN(address)))
+        var m;
+
+        m = re.exec(item);
+        if (m)
         {
-            label_aa[address] = pair[0];
+            let address = parseHexInt(m[2]);
+            label_aa[address] = m[1];
             label_table.push(address);
         }
     });
@@ -490,6 +497,11 @@ function conditional_caps(string)
     }
 
     return string;
+}
+
+function parseHexInt(value)
+{
+    return parseInt(value.replaceAll("$", "0x"));
 }
 
 function print_fcb(mem, fcb )

@@ -13,7 +13,7 @@
 <div style="margin-top:12px;"><label for="file_type">File Type:</label><input type="radio" id="raw" name="file_type" value="raw" checked="checked" onchange="disassemble()"><label for="html">Raw</label><input type="radio" id="decb" name="file_type" value="decb" onchange="disassemble()"></label><label for="css">DECB</label><input type="radio" id="os9" name="file_type" value="os9" onchange="disassemble()" hidden><label for="javascript" hidden>OS-9</label></div>
 <div style="margin-top:12px;"><label for="offset">Load offset:</label>
 <input type="text" id="offset" name="offset" value="0" onchange="disassemble()">
-<font size="-1">Use '0x' for hexidecimal.</font></div>
+<font size="-1">Use '$' for hexidecimal.</font></div>
 <div style="margin-top:12px;"><label for="transferList">Transfer Addresses:</label><br />
 <textarea id="transferList" name="transferList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
 <font size="-1">List of addresses to start disassembly.</font></div>
@@ -23,9 +23,9 @@
 <div style="margin-top:12px;"><label for="noFollow">No Follow Addresses:</label><br />
 <textarea id="noFollow" name="noFollow" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
 <font size="-1">List of addressed that won't disassemble.</font></div>
-<div style="margin-top:12px;"><label for="labelList"">Label list:</label><br />
-<textarea id="labelList" name="labelList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="label1;address1,label2;address2,…"></textarea>
-<font size="-1">User supplied labels.</font></div>
+<div style="margin-top:12px;"><label for="labelList"">Assembler Equates:</label><br />
+<textarea id="labelList" name="labelList" rows="8" cols="55" onchange="disassemble()" spellcheck="false" placeholder="label equ address…"></textarea>
+<font size="-1">Any valid equates.</font></div>
 <div style="margin-top:12px;"><input type="checkbox" id="hd6309" name="hd6309" value="hd6309" onchange="disassemble()"><label for="hd6309">Support HD6309 opcodes</label>
 <br>
 <input type="checkbox" id="allCaps" name="allCaps" value="allCaps" onchange="disassemble()"><label for="allCaps">Capitalize disassembly</label>

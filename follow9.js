@@ -344,7 +344,7 @@ function disassemble()
 
             // disassemble new PC
             let address, pc_mode;
-
+                        
             if(allow_6309_codes)
                 [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1);
             else
@@ -468,6 +468,16 @@ function disassemble()
 function generate_conditional_label(address)
 {
     let string;
+    
+    while( address < 0 )
+    {
+        address += 65536;
+    }
+    
+    while( address > 65535)
+    {
+        address -= 65536;
+    }
 
     if(generate_label)
     {
@@ -723,7 +733,7 @@ function disem( mem, pc, dis, inTable )
                     if(current[1] == "r2") operand += "u,";
                     if(current[1] == "r3") operand += "s,";
                 }
-                if(address & 0x20) operand += "y";
+                if(address & 0x20) operand += "y,";
                 if(address & 0x10) operand += "x,";
                 if(address & 0x08) operand += "dp,";
                 if(address & 0x04) operand += "b,";
@@ -843,7 +853,7 @@ function disem( mem, pc, dis, inTable )
         // handle wrap around
         for ( let i=origPC+1; i<0x10000; i++ )
         {
-            dis[i] = "";
+            if(dis[i] == undefined) dis[i] = "";
         }
 
         j = 0;
@@ -855,7 +865,7 @@ function disem( mem, pc, dis, inTable )
 
     for( let i=j; i<pc; i++ )
     {
-        dis[i] = "";
+        if(dis[i] == undefined) dis[i] = "";
     }
 
     return [pc, address, origPCMode];

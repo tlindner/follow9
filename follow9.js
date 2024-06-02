@@ -52,6 +52,7 @@ var generate_label;
 var absIndPC;
 var label_aa;
 var index_hex_register_offset;
+var jason_on;
 
 const m6809_exg_tfr = ["d", "x", "y", "u", "s", "pc", "??", "??", "a", "b", "cc", "dp", "??", "??", "??", "??" ];
 const h6309_exg_tfr = ["d", "x", "y", "u", "s", "pc", "w" ,"v", "a", "b", "cc", "dp", "0", "0", "e", "f"];
@@ -101,6 +102,10 @@ function disassemble()
     generate_label = document.getElementById("genLabel").checked;
     absIndPC = document.getElementById("absIndPC").checked;
     index_hex_register_offset = document.getElementById("hexOffset").checked;
+    jason_on = document.getElementById("json").checked;
+    
+    let jason = {hd6309:allow_6309_codes, allCaps:all_caps,listOpcodes:list_opcodes,printAddress:print_address,genLabel:generate_label,absIndPC:absIndPC,hexOffset:index_hex_register_offset};
+
     result = "";
     label_table = new Array;
     jump_table = new Array;
@@ -126,7 +131,8 @@ function disassemble()
     let memory = new Array(65536);
     let view = new Uint8Array(buffer);
     let offset = parseHexInt(document.getElementById("offset").value)
-
+    jason['offset']=offset;
+    
     if(view.length == 0)
     {
         document.getElementById("disassembly").value = "Data file empty."
@@ -134,16 +140,19 @@ function disassemble()
     }
 
     // build no follow array
-    let no_follow = document.getElementById("noFollow").value.split(",");
+    let no_follow = document.getElementById("noFollow").value;
+    jason['noFollow'] = no_follow;
+    no_follow = no_follow.split(",");
 
     for(let i = 0; i < no_follow.length; i++)
     {
         no_follow[i] = parseHexInt(no_follow[i]);
     }
-
+    
     // build transfer address array
     let transfers;
     let preTransfer = document.getElementById("transferList").value;
+    jason['transferList'] = preTransfer;
     if(preTransfer != "")
     {
         transfers = preTransfer.split(",");
@@ -162,7 +171,9 @@ function disassemble()
         transfers = new Array;
     }
 
-    switch(document.querySelector("input[name=file_type]:checked").value)
+    let file_type = document.querySelector("input[name=file_type]:checked").value;
+    jason['file_type'] = file_type;
+    switch(file_type)
     {
         case "raw":
             // Load data into memory, offset by offset
@@ -278,7 +289,9 @@ function disassemble()
     document.getElementById("disassembly").value = "";
 
     // Add transfer table addresses to transfer array
-    let ttl = document.getElementById("transferTable").value.split(",");
+    let ttl = document.getElementById("transferTable").value;
+    jason['transferTable'] = ttl;
+    ttl = ttl.split(",");
     ttl.forEach((item) =>
     {
         let range = item.split(";");
@@ -310,7 +323,9 @@ function disassemble()
     // fill label table associative array
     var re = /(\S+)\s+equ\s+(\S+)/i;
     label_aa = [];
-    let ltaa = document.getElementById("labelList").value.split("\n");
+    let ltaa = document.getElementById("labelList").value;
+    jason['labelList'] = ltaa;
+    ltaa = ltaa.split("\n");
     ltaa.forEach((item) =>
     {
         var m;
@@ -463,6 +478,13 @@ function disassemble()
     }
 
     print_fcb(memory, fcb);
+
+    result += address_space + opcode_space + conditional_caps(" end") + "\n";
+    
+    if(jason_on)
+    {
+        result += "\r\r\r" + JSON.stringify(jason);
+    }
 
     document.getElementById("disassembly").value = result;
 }

@@ -51,6 +51,7 @@ var label_table, jump_table;
 var generate_label;
 var absIndPC;
 var label_aa;
+var index_hex_register_offset;
 
 const m6809_exg_tfr = ["d", "x", "y", "u", "s", "pc", "??", "??", "a", "b", "cc", "dp", "??", "??", "??", "??" ];
 const h6309_exg_tfr = ["d", "x", "y", "u", "s", "pc", "w" ,"v", "a", "b", "cc", "dp", "0", "0", "e", "f"];
@@ -62,10 +63,10 @@ const block_r = ["d","x","y","u","s","?","?","?","?","?","?","?","?","?","?","?"
 const reg = [ "x","y","u","s" ];
 
 const off4 = [
-  "0",  "1",  "2",  "3",  "4",  "5",  "6",  "7",
-  "8",  "9", "10", "11", "12", "13", "14", "15",
-"-16","-15","-14","-13","-12","-11","-10", "-9",
- "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1"
+  0,  1,  2,  3,  4,  5,  6,  7,
+  8,  9, 10, 11, 12, 13, 14, 15,
+-16,-15,-14,-13,-12,-11,-10, -9,
+ -8, -7, -6, -5, -4, -3, -2, -1
 ];
 
 function newFile()
@@ -99,6 +100,7 @@ function disassemble()
     print_address = document.getElementById("printAddress").checked;
     generate_label = document.getElementById("genLabel").checked;
     absIndPC = document.getElementById("absIndPC").checked;
+    index_hex_register_offset = document.getElementById("hexOffset").checked;
     result = "";
     label_table = new Array;
     jump_table = new Array;
@@ -463,6 +465,64 @@ function disassemble()
     print_fcb(memory, fcb);
 
     document.getElementById("disassembly").value = result;
+}
+
+function gen_index_register_offset_8(value)
+{
+    let string;
+    
+    if(index_hex_register_offset)
+    {
+        value <<= 24;
+        value >>= 24;
+        
+        if( value < 0 )
+        {
+            value *= -1;
+            string = "$-" + value.toString(16).padStart(2,"0");
+        }
+        else
+        {
+            string = "$" + value.toString(16).padStart(2,"0");
+        }
+    }
+    else
+    {
+        value <<= 24;
+        value >>= 24;
+        string = value.toString(10);        
+    }
+    
+    return string;
+}
+
+function gen_index_register_offset_16(value)
+{
+    let string;
+    
+    if(index_hex_register_offset)
+    {
+        value <<= 16;
+        value >>= 16;
+        
+        if( value < 0 )
+        {
+            value *= -1;
+            string = "$-" + value.toString(16).padStart(4,"0");
+        }
+        else
+        {
+            string = "$" + value.toString(16).padStart(4,"0");
+        }
+    }
+    else
+    {
+        value <<= 16;
+        value >>= 16;
+        string = value.toString(10);        
+    }
+    
+    return string;
 }
 
 function generate_conditional_label(address)
@@ -917,7 +977,7 @@ function index_decode( mem, pc, operand )
             case 0x08:
                 value = read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "$" + value.toString(16).padStart(2,"0") + "," + register;
+                operand += "<" + gen_index_register_offset_8(value) + "," + register;
                 break;
 
             case 0x09:
@@ -925,7 +985,7 @@ function index_decode( mem, pc, operand )
                 pc = next_pc( pc, 1 );
                 value += read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "$" + value.toString(16).padStart(4,"0") + "," + register;
+                operand += ">" + gen_index_register_offset_16(value) + "," + register;
                 break;
 
             case 0x0b: operand += "d," + register; break;
@@ -935,7 +995,7 @@ function index_decode( mem, pc, operand )
                 pc = next_pc( pc, 1 );
 
                 if(absIndPC)
-                    operand += "<" + ((value << 24) >> 24) + ",pc";
+                    operand += "<" + gen_index_register_offset_8(value) + ",pc";
                 else
                     operand += "<" + generate_conditional_label(pc + ((value << 24) >> 24)) + ",pcr";
                 break;
@@ -947,7 +1007,7 @@ function index_decode( mem, pc, operand )
                 pc = next_pc( pc, 1 );
 
                 if(absIndPC)
-                    operand += ">" + ((value << 16) >> 16) + ",pc";
+                    operand += ">" + gen_index_register_offset_16(value) + ",pc";
                 else
                     operand += ">" + generate_conditional_label(pc + ((value << 16) >> 16)) + ",pcr";
                 break;
@@ -965,7 +1025,7 @@ function index_decode( mem, pc, operand )
             case 0x18:
                 value = read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "[$" + value.toString(16).padStart(2,"0") + "," + register + "]";
+                operand += "<[" + gen_index_register_offset_8(value) + "," + register + "]";
                 break;
 
             case 0x19:
@@ -975,7 +1035,7 @@ function index_decode( mem, pc, operand )
                 value += read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
                 if(absIndPC)
-                    operand += ">[" + ((value << 16) >> 16) + ",pc]";
+                    operand += ">[" + gen_index_register_offset_16(value) + ",pc]";
                 else
                     operand += ">[" + generate_conditional_label(pc + ((value << 16) >> 16)) + ",pcr]";
                 break;
@@ -986,9 +1046,9 @@ function index_decode( mem, pc, operand )
                 value = read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
                 if(absIndPC)
-                    operand += "[<" + ((value << 24) >> 24) + ",pc]";
+                    operand += "<[" + gen_index_register_offset_8(value) + ",pc]";
                 else
-                    operand += "[<" + generate_conditional_label(pc + ((value << 24) >> 24)) + ",pcr]";
+                    operand += "<[" + generate_conditional_label(pc + ((value << 24) >> 24)) + ",pcr]";
                 break;
 
             case 0x07:
@@ -1064,7 +1124,7 @@ function index_decode( mem, pc, operand )
                     pc = next_pc( pc, 1 );
                     value += read_memory(mem, pc);
                     pc = next_pc( pc, 1 );
-                    operand += "[" + generate_conditional_label(value) + "]";
+                    operand += ">[" + generate_conditional_label(value) + "]";
                 }
                 else if(allow_6309_codes)
                 {
@@ -1077,7 +1137,7 @@ function index_decode( mem, pc, operand )
                             pc = next_pc( pc, 1 );
                             value += read_memory(mem, pc);
                             pc = next_pc( pc, 1 );
-                            operand += "$" + value.toString(16).padStart(2,"0") + ",w";
+                            operand += ">$" + value.toString(16).padStart(2,"0") + ",w";
                             break;
 
                         case 0xb0:
@@ -1085,7 +1145,7 @@ function index_decode( mem, pc, operand )
                             pc = next_pc( pc, 1 );
                             value += read_memory(mem, pc);
                             pc = next_pc( pc, 1 );
-                            operand += "[$" + value.toString(16).padStart(4,"0") + ",w]";
+                            operand += ">[$" + value.toString(16).padStart(4,"0") + ",w]";
                             break;
 
                         case 0xcf: operand += ",w++"; break;
@@ -1104,7 +1164,8 @@ function index_decode( mem, pc, operand )
     }
     else
     {
-        operand += off4[value&31] + "," + register;
+        operand += gen_index_register_offset_8(off4[value&31])+ "," + register;
+        
     }
 
     return [pc, operand, value];

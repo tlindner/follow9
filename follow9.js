@@ -76,7 +76,6 @@ function newFile()
 
     input.onchange = e =>
     {
-
         // getting a hold of the file reference
         var file = e.target.files[0];
 
@@ -103,7 +102,7 @@ function disassemble()
     absIndPC = document.getElementById("absIndPC").checked;
     index_hex_register_offset = document.getElementById("hexOffset").checked;
     jason_on = document.getElementById("json").checked;
-    
+
     let jason = {hd6309:allow_6309_codes, allCaps:all_caps,listOpcodes:list_opcodes,printAddress:print_address,genLabel:generate_label,absIndPC:absIndPC,hexOffset:index_hex_register_offset};
 
     result = "";
@@ -133,7 +132,7 @@ function disassemble()
     let offset = document.getElementById("offset").value;
     jason['offset']=offset;
     offset = parseHexInt(offset);
-    
+
     if(view.length == 0)
     {
         document.getElementById("disassembly").value = "Data file empty."
@@ -149,7 +148,7 @@ function disassemble()
     {
         no_follow[i] = parseHexInt(no_follow[i]);
     }
-    
+
     // build transfer address array
     let transfers;
     let preTransfer = document.getElementById("transferList").value;
@@ -362,7 +361,7 @@ function disassemble()
 
             // disassemble new PC
             let address, pc_mode;
-                        
+
             if(allow_6309_codes)
                 [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1);
             else
@@ -481,7 +480,7 @@ function disassemble()
     print_fcb(memory, fcb);
 
     result += address_space + opcode_space + conditional_caps(" end") + "\n";
-    
+
     if(jason_on)
     {
         result += "\r\r\r" + JSON.stringify(jason);
@@ -505,7 +504,7 @@ function paste_config()
     // "file_type":"raw",
     // "transferTable":"",
     // "labelList":""}
-    
+
     navigator.clipboard.readText()
       .then(text =>
     {
@@ -520,24 +519,33 @@ function paste_config()
             document.getElementById("genLabel").checked = obj['genLabel'];
             document.getElementById("absIndPC").checked = obj['absIndPC'];
             document.getElementById("hexOffset").checked = obj['hexOffset'];
+
+            document.getElementById("offset").value = obj['offset'];
+            document.getElementById("noFollow").value = obj['noFollow'];
+            document.getElementById("transferList").value = obj['transferList'];
+            document.getElementById("transferTable").value = obj['transferTable'];
+            document.getElementById("labelList").value = obj['labelList'];
+
+            document.getElementById(obj['file_type']).checked = true;
+
             disassemble();
         }
     })
     .catch(err =>
     {
         console.error('Failed to read clipboard contents: ', err);
-    });    
+    });
 }
 
 function gen_index_register_offset_8(value)
 {
     let string;
-    
+
     if(index_hex_register_offset)
     {
         value <<= 24;
         value >>= 24;
-        
+
         if( value < 0 )
         {
             value *= -1;
@@ -552,21 +560,21 @@ function gen_index_register_offset_8(value)
     {
         value <<= 24;
         value >>= 24;
-        string = value.toString(10);        
+        string = value.toString(10);
     }
-    
+
     return string;
 }
 
 function gen_index_register_offset_16(value)
 {
     let string;
-    
+
     if(index_hex_register_offset)
     {
         value <<= 16;
         value >>= 16;
-        
+
         if( value < 0 )
         {
             value *= -1;
@@ -581,21 +589,21 @@ function gen_index_register_offset_16(value)
     {
         value <<= 16;
         value >>= 16;
-        string = value.toString(10);        
+        string = value.toString(10);
     }
-    
+
     return string;
 }
 
 function generate_conditional_label(address)
 {
     let string;
-    
+
     while( address < 0 )
     {
         address += 65536;
     }
-    
+
     while( address > 65535)
     {
         address -= 65536;
@@ -1227,7 +1235,7 @@ function index_decode( mem, pc, operand )
     else
     {
         operand += gen_index_register_offset_8(off4[value&31])+ "," + register;
-        
+
     }
 
     return [pc, operand, value];

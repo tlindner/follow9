@@ -157,7 +157,8 @@ function disassemble()
     {
         transfers = preTransfer.split(",");
 
-        for (let i = 0; i < transfers.length; i++) {
+        for(let i = 0; i < transfers.length; i++)
+        {
             transfers[i] = parseHexInt(transfers[i]);
 
             if((transfers[i] != undefined) || (!isNan(transfers[i])))
@@ -178,7 +179,7 @@ function disassemble()
         case "raw":
             // Load data into memory, offset by offset
 
-            for (let i=0; i<view.length; i++)
+            for(let i=0; i<view.length; i++)
             {
                 write_memory(memory,i+offset,view[i]);
             }
@@ -305,7 +306,7 @@ function disassemble()
                 {
                     label_table.push(start);
 
-                    for( let i=start; i<start+length; i+=2 )
+                    for(let i=start; i<start+length; i+=2)
                     {
                         let address = read_memory(memory,i) << 8;
                         address += read_memory(memory,i+1);
@@ -429,7 +430,7 @@ function disassemble()
     state = 0;
     let fcb = new Array;
 
-    for( let i=0; i<65536; i++ )
+    for(let i=0; i<65536; i++)
     {
         if(memory[i] == undefined)
         {
@@ -955,7 +956,7 @@ function disem( mem, pc, dis, inTable )
         if(origPC > pc)
         {
             // handle wrap around
-            for ( let i=origPC; i<0x10000; i++ )
+            for(let i=origPC; i<0x10000; i++)
             {
                 dis[origPC] += read_memory(mem, i).toString(16).padStart(2,"0")
             }
@@ -967,7 +968,7 @@ function disem( mem, pc, dis, inTable )
             j = origPC;
         }
 
-        for ( let i=j; i<pc; i++ )
+        for(let i=j; i<pc; i++)
         {
             dis[origPC] += read_memory(mem, i).toString(16).padStart(2,"0")
         }
@@ -981,7 +982,7 @@ function disem( mem, pc, dis, inTable )
     if(origPC+1 > pc)
     {
         // handle wrap around
-        for ( let i=origPC+1; i<0x10000; i++ )
+        for(let i=origPC+1; i<0x10000; i++)
         {
             if(dis[i] == undefined) dis[i] = "";
         }
@@ -993,7 +994,7 @@ function disem( mem, pc, dis, inTable )
         j = origPC+1;
     }
 
-    for( let i=j; i<pc; i++ )
+    for(let i=j; i<pc; i++)
     {
         if(dis[i] == undefined) dis[i] = "";
     }

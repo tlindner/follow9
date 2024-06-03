@@ -130,8 +130,9 @@ function disassemble()
 
     let memory = new Array(65536);
     let view = new Uint8Array(buffer);
-    let offset = parseHexInt(document.getElementById("offset").value)
+    let offset = document.getElementById("offset").value;
     jason['offset']=offset;
+    offset = parseHexInt(offset);
     
     if(view.length == 0)
     {
@@ -487,6 +488,45 @@ function disassemble()
     }
 
     document.getElementById("disassembly").value = result;
+}
+
+function paste_config()
+{
+    // {"hd6309":false,
+    // "allCaps":false,
+    // "listOpcodes":true,
+    // "printAddress":true,
+    // "genLabel":true,
+    // "absIndPC":false,
+    // "hexOffset":false,
+    // "offset":"",
+    // "noFollow":"",
+    // "transferList":"",
+    // "file_type":"raw",
+    // "transferTable":"",
+    // "labelList":""}
+    
+    navigator.clipboard.readText()
+      .then(text =>
+    {
+        // console.log('Pasted content: ', text);
+        const obj = JSON.parse(text);
+        if(obj)
+        {
+            document.getElementById("hd6309").checked = obj['hd6309'];
+            document.getElementById("allCaps").checked = obj['allCaps'];
+            document.getElementById("listOpcodes").checked = obj['listOpcodes'];
+            document.getElementById("printAddress").checked = obj['printAddress'];
+            document.getElementById("genLabel").checked = obj['genLabel'];
+            document.getElementById("absIndPC").checked = obj['absIndPC'];
+            document.getElementById("hexOffset").checked = obj['hexOffset'];
+            disassemble();
+        }
+    })
+    .catch(err =>
+    {
+        console.error('Failed to read clipboard contents: ', err);
+    });    
 }
 
 function gen_index_register_offset_8(value)

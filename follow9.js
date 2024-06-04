@@ -108,6 +108,7 @@ function disassemble()
     result = "";
     label_table = new Array;
     jump_table = new Array;
+    label_aa = new Array;
 
     if(list_opcodes)
     {
@@ -190,6 +191,7 @@ function disassemble()
             let i=0;
             let state = 0;
             let length, address;
+            let decb_total_symbol_length, decb_symbol_length, decb_build_symbol;
 
             while( i<view.length )
             {
@@ -267,14 +269,87 @@ function disassemble()
                     case 9:
                         address += view[i];
                         transfers.push((address+offset)&0xffff);
-                        i = view.length;
+                        state = 10;
+                    break;
+
+                    case 10:
+                        // check for symbols
+                        if(view[i] == 1)
+                            state = 11;
+                        else
+                            i = view.length;
+                    break;
+
+                    case 11:
+                        // get first byte of total length
+                        decb_total_symbol_length = view[i] << 8;
+                        state = 12;
+                    break;
+
+                    case 12:
+                        // second byte of total length
+                        decb_total_symbol_length += view[i] + 1;
+                        state = 13;
+                    break;
+
+                    case 13:
+                        if(view[i] == 0)
+                        {
+                            state = 14;
+                        }
+                        else
+                            i = view.length;
+                    break;
+
+                    case 14:
+                        if(view[i] == 0)
+                        {
+                            state = 15;
+                        }
+                        else
+                            i = view.length;
+                    break;
+
+                    case 15:
+                        // get a symbol length
+                        if(view[i] != 0 )
+                        {
+                            decb_symbol_length = view[i] & 0x7f;
+                            decb_build_symbol = "";
+                            state = 16;
+                        }
+                        else
+                            i = view.length;
+                    break;
+
+                    case 16:
+                        // build symbol string
+                        decb_build_symbol += String.fromCharCode(view[i]);
+
+                        if(decb_symbol_length == 0) state = 17;
+                    break;
+
+                    case 17:
+                        // get part one of value
+                        address = view[i] << 8;
+                        state = 18;
+                    break;
+
+                    case 18:
+                        // get part two of value
+                        address += view[i];
+                        state = 15;
+
+                        // put value in table
+                        label_aa[address] = decb_build_symbol;
+                        label_table.push(address);
                     break;
                 }
 
                 i += 1;
+                decb_total_symbol_length--;
+                decb_symbol_length--;
             }
-
-            // TODO: load symbol table: http://tlindner.macmess.org/?p=820
         break;
 
         case "os9":
@@ -302,28 +377,27 @@ function disassemble()
             let start = parseHexInt(range[0]);
             let length = parseHexInt(range[1]);
 
-                if(start != undefined && (!isNaN(start)))
-                {
-                    label_table.push(start);
+            if(start != undefined && (!isNaN(start)))
+            {
+                label_table.push(start);
 
-                    for(let i=start; i<start+length; i+=2)
+                for(let i=start; i<start+length; i+=2)
+                {
+                    let address = read_memory(memory,i) << 8;
+                    address += read_memory(memory,i+1);
+                    if(address != undefined && (!isNaN(address)))
                     {
-                        let address = read_memory(memory,i) << 8;
-                        address += read_memory(memory,i+1);
-                        if(address != undefined && (!isNaN(address)))
-                        {
-                            transfers.push(address);
-                            label_table.push(address);
-                            jump_table.push(i);
-                        }
+                        transfers.push(address);
+                        label_table.push(address);
+                        jump_table.push(i);
                     }
                 }
             }
+        }
     });
 
     // fill label table associative array
     var re = /(\S+)\s+equ\s+(\S+)/i;
-    label_aa = [];
     let ltaa = document.getElementById("labelList").value;
     jason['labelList'] = ltaa;
     ltaa = ltaa.split("\n");
@@ -492,20 +566,6 @@ function disassemble()
 
 function paste_config()
 {
-    // {"hd6309":false,
-    // "allCaps":false,
-    // "listOpcodes":true,
-    // "printAddress":true,
-    // "genLabel":true,
-    // "absIndPC":false,
-    // "hexOffset":false,
-    // "offset":"",
-    // "noFollow":"",
-    // "transferList":"",
-    // "file_type":"raw",
-    // "transferTable":"",
-    // "labelList":""}
-
     navigator.clipboard.readText()
       .then(text =>
     {

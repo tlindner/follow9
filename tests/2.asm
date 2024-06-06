@@ -1,8 +1,11 @@
 	org $4000
 start
-	lda #$54
+	lbra loop
+data
+    fdb $1234,$1234,$1234
 loop
-	bra loop
+	ldx #data
+    ldx data,pcr
 	bne loop
 	beq loop
 	jmp loop

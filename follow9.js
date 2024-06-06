@@ -353,8 +353,20 @@ function disassemble()
         break;
 
         case "os9":
-            document.getElementById("disassembly").value = "OS-9 format currently unimplemented.";
-            return;
+            if((view.length > 1) && (view[0] == 0x87) && (view[1] == 0xcd))
+            {
+                if(view.length>10)
+                {
+                    address = (view[9]<<8) + view[10];
+                    transfers.push((address+offset)&0xffff);
+                    
+                    while(i<view.length)
+                    {
+                        memory[(i+offset)&0xffff] = view[i];
+                        i++;
+                    }
+                }
+            }
         break;
 
         default:

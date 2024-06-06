@@ -2,3 +2,4 @@
 *.lst
 tests/index
 tests/index.exe
+tests/list

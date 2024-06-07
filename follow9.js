@@ -53,6 +53,7 @@ var absIndPC;
 var label_aa;
 var index_hex_register_offset;
 var jason_on;
+var os9SWI2;
 
 const m6809_exg_tfr = ["d", "x", "y", "u", "s", "pc", "??", "??", "a", "b", "cc", "dp", "??", "??", "??", "??" ];
 const h6309_exg_tfr = ["d", "x", "y", "u", "s", "pc", "w" ,"v", "a", "b", "cc", "dp", "0", "0", "e", "f"];
@@ -102,8 +103,9 @@ function disassemble()
     absIndPC = document.getElementById("absIndPC").checked;
     index_hex_register_offset = document.getElementById("hexOffset").checked;
     jason_on = document.getElementById("json").checked;
+    os9SWI2 = document.getElementById("os9SWI2").checked;
 
-    let jason = {hd6309:allow_6309_codes, allCaps:all_caps,listOpcodes:list_opcodes,printAddress:print_address,genLabel:generate_label,absIndPC:absIndPC,hexOffset:index_hex_register_offset};
+    let jason = {hd6309:allow_6309_codes, allCaps:all_caps,listOpcodes:list_opcodes,printAddress:print_address,genLabel:generate_label,absIndPC:absIndPC,hexOffset:index_hex_register_offset,os9SWI2:os9SWI2};
 
     result = "";
     label_table = new Array;
@@ -353,20 +355,54 @@ function disassemble()
         break;
 
         case "os9":
+            let error = "";
+        
             if((view.length > 1) && (view[0] == 0x87) && (view[1] == 0xcd))
             {
-                if(view.length>10)
+                if(view.length>9)
                 {
-                    address = (view[9]<<8) + view[10];
-                    transfers.push((address+offset)&0xffff);
+                    let address;
                     
-                    while(i<view.length)
+                    if((view[6]>>4) != 0x0f)
                     {
-                        memory[(i+offset)&0xffff] = view[i];
-                        i++;
+                        address = (view[9]<<8) + view[10];
+                        transfers.push((address+offset)&0xffff);
+                    }
+                    
+                    if((view[6]>>4) == 0x0e)
+                    {
+                        for(let i=address+3; i<address+9; i+=3)
+                        {
+                            let addy = (view[i]<<8) + view[i+1];
+                            transfers.push((addy+offset)&0xffff);
+                        }
                     }
                 }
+                else
+                {
+                    error = "File too short";
+                }
             }
+            else
+            {
+                error = "Sync bytes not found";
+            }
+            
+            if(error=="")
+            {
+                let i = 0;
+                while(i<view.length)
+                {
+                    memory[(i+offset)&0xffff] = view[i];
+                    i++;
+                }
+            }
+            else
+            {
+                document.getElementById("disassembly").value = "Error with OS-9 Decode: " + error;
+                return;
+            }
+
         break;
 
         default:
@@ -592,6 +628,7 @@ function paste_config()
             document.getElementById("genLabel").checked = obj['genLabel'];
             document.getElementById("absIndPC").checked = obj['absIndPC'];
             document.getElementById("hexOffset").checked = obj['hexOffset'];
+            document.getElementById("os9SWI2").checked = obj['os9SWI2'];
 
             document.getElementById("offset").value = obj['offset'];
             document.getElementById("noFollow").value = obj['noFollow'];
@@ -826,8 +863,17 @@ function disem( mem, pc, dis, inTable )
     {
         table = inTable;
     }
-
-    current = table[read_memory(mem, pc)];
+    
+    // Support OS-9 version of SWI2 
+    if(os9SWI2 && (read_memory(mem, origPC) == 0x10) && (read_memory(mem, pc) == 0x3f))
+    {
+        current = ["os9", "os9", "pc_nop"];
+    }
+    else
+    {
+        current = table[read_memory(mem, pc)];
+    }        
+    
     origPCMode = current[2];
     mnenonmic = current[0];
     pc = next_pc( pc, 1 );
@@ -1015,6 +1061,11 @@ function disem( mem, pc, dis, inTable )
             operand = "#$" + address.toString(16).padStart(8,"0");
         break;
 
+        case "os9":   /* os9 swi2 decode */
+            address = read_memory(mem, pc);
+            operand = os9_codes[address];
+        break;
+        
         default:
             operand = "<<Unimplemented operand>>"
     }

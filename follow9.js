@@ -356,19 +356,19 @@ function disassemble()
 
         case "os9":
             let error = "";
-        
+
             if((view.length > 1) && (view[0] == 0x87) && (view[1] == 0xcd))
             {
                 if(view.length>9)
                 {
                     let address;
-                    
+
                     if((view[6]>>4) != 0x0f)
                     {
                         address = (view[9]<<8) + view[10];
                         transfers.push((address+offset)&0xffff);
                     }
-                    
+
                     if((view[6]>>4) == 0x0e)
                     {
                         for(let i=address+3; i<address+9; i+=3)
@@ -387,7 +387,7 @@ function disassemble()
             {
                 error = "Sync bytes not found";
             }
-            
+
             if(error=="")
             {
                 let i = 0;
@@ -863,8 +863,8 @@ function disem( mem, pc, dis, inTable )
     {
         table = inTable;
     }
-    
-    // Support OS-9 version of SWI2 
+
+    // Support OS-9 version of SWI2
     if(os9SWI2 && (read_memory(mem, origPC) == 0x10) && (read_memory(mem, pc) == 0x3f))
     {
         current = ["os9", "os9", "pc_nop"];
@@ -872,8 +872,8 @@ function disem( mem, pc, dis, inTable )
     else
     {
         current = table[read_memory(mem, pc)];
-    }        
-    
+    }
+
     origPCMode = current[2];
     mnenonmic = current[0];
     pc = next_pc( pc, 1 );
@@ -1063,9 +1063,10 @@ function disem( mem, pc, dis, inTable )
 
         case "os9":   /* os9 swi2 decode */
             address = read_memory(mem, pc);
+            pc = next_pc( pc, 1 );
             operand = os9_codes[address];
         break;
-        
+
         default:
             operand = "<<Unimplemented operand>>"
     }
@@ -3012,4 +3013,71 @@ const opcodes_6309_p1 = [
 ["std", "ext", "pc_nop"],
 ["ldu", "ext", "pc_nop"],
 ["stu", "ext", "pc_nop"]
+];
+
+const os9_codes = [
+'F$Link',      'F$Load',      'F$UnLink',    'F$Fork',
+'F$Wait',      'F$Chain',     'F$Exit',      'F$Mem',
+'F$Send',      'F$Icpt',      'F$Sleep',     'F$SSpd',
+'F$ID',        'F$SPrior',    'F$SSWI',      'F$Perr',
+'F$PrsNam',    'F$CmpNam',    'F$SchBit',    'F$AllBit',
+'F$DelBit',    'F$Time',      'F$STime',     'F$CRC',
+'F$GPrDsc',    'F$GBlkMp',    'F$GModDr',    'F$CpyMem',
+'F$SUser',     'F$UnLoad',    'F$Alarm',     'F$',
+'F$',          'F$NMLink',    'F$NMLoad',    'F$Ctime',
+'F$Cstime',    'F$CTswi2',    'F$',          'F$VIRQ',
+'F$SRqMem',    'F$SRtMem',    'F$IRQ',       'F$IOQu',
+'F$AProc',     'F$NProc',     'F$VModul',    'F$Find64',
+'F$All64',     'F$Ret64',     'F$SSvc',      'F$IODel',
+'F$SLink',     'F$Boot',      'F$BtMem',     'F$GProcP',
+'F$Move',      'F$AllRAM',    'F$AllImg',    'F$DelImg',
+'F$SetImg',    'F$FreeLB',    'F$FreeHB',    'F$AllTsk',
+'F$DelTsk',    'F$SetTsk',    'F$ResTsk',    'F$RelTsk',
+'F$DATLog',    'F$DATTmp',    'F$LDAXY',     'F$LDAXYP',
+'F$LDDDXY',    'F$LDABX',     'F$STABX',     'F$AllPrc',
+'F$DelPrc',    'F$ELink',     'F$FModul',    'F$MapBlk',
+'F$ClrBlk',    'F$DelRAM',    'F$GCMDir',    'F$AlHRam',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'I$Attach',    'I$Detach',    'I$Dup',       'I$Create',
+'I$Open',      'I$MakDir',    'I$Chgdir',    'I$Delete',
+'I$Seek',      'I$Read',      'I$Write',     'I$ReadLn',
+'I$WritLn',    'I$GetStt',    'I$SetStt',    'I$Close',
+'I$DeletX',    'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$',
+'F$',          'F$',          'F$',          'F$'
 ];

@@ -637,6 +637,7 @@ function disassemble()
     // Fill disassembly array
     let pc = transfers.pop();
     let dis = new Array;
+    let dis_comment = new Array;
 
     while(pc != undefined)
     {
@@ -658,9 +659,9 @@ function disassemble()
             let address, pc_mode;
 
             if(allow_6309_codes)
-                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1);
+                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1, dis_comment);
             else
-                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6809_p1);
+                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6809_p1, dis_comment);
 
             switch( pc_mode ) {
                 case "pc_nop":     /* no effect */
@@ -755,7 +756,14 @@ function disassemble()
             {
                 if(print_address) result += conditional_caps((i).toString(16).padStart(4,"0")).padEnd(5, " ");
 
-                result += conditional_caps(dis[i] + "\r");
+                result += conditional_caps(dis[i]);
+
+                if(dis_comment[i] != undefined)
+                {
+                    result += "  ; '" + dis_comment[i] + "'";
+                }
+
+                result += "\r";
             }
         }
         else
@@ -1117,7 +1125,7 @@ function make_print(aChar)
     return ".";
 }
 
-function disem( mem, pc, dis, inTable )
+function disem( mem, pc, dis, inTable, dis_comment )
 {
     let table;
     let argument;
@@ -1173,7 +1181,7 @@ function disem( mem, pc, dis, inTable )
 
             if(((mnenonmic == "lda") || (mnenonmic == "ldb")) && (address > 31) && (address < 127))
             {
-                operand += "  ; '" + String.fromCharCode(address) + "'";
+                dis_comment[origPC] = String.fromCharCode(address);
             }
         break;
 

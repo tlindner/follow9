@@ -34,6 +34,9 @@
 <div style="margin-top:12px;"><label for="fczList">FCZ Strings:</label><br />
 <textarea id="fczList" name="fczList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
 <font size="-1">List of addresses to decode as FCZ strings; null (zero byte) terminated.</font></div>
+<div style="margin-top:12px;"><label for="fccList">FCC Strings:</label><br />
+<textarea id="fccList" name="fccList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1;length1,address2;length2,…"></textarea>
+<font size="-1">List of addresses and lengths of FCC strings (plain ASCII text, no terminator).</font></div>
 <div style="margin-top:12px;"><label for="noFollow">No Follow Addresses:</label><br />
 <textarea id="noFollow" name="noFollow" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
 <font size="-1">List of addressed that won't disassemble.</font></div>

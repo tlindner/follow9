@@ -47,7 +47,7 @@ var list_opcodes = false;
 var opcode_space, address_space;
 var result;
 var print_address;
-var label_table, jump_table, fcs_table, fcz_table;
+var label_table, jump_table, fcs_table, fcz_table, fcc_table;
 var generate_label;
 var absIndPC;
 var label_aa;
@@ -112,6 +112,7 @@ function disassemble()
     jump_table = new Array;
     fcs_table = new Array;
     fcz_table = new Array;
+    fcc_table = new Array;
     label_aa = new Array;
 
     if(list_opcodes)
@@ -591,6 +592,30 @@ function disassemble()
         }
     });
 
+    // Decode FCC strings: address and length, plain ASCII characters
+    // with no terminator.
+    let fccList = document.getElementById("fccList").value;
+    jason['fccList'] = fccList;
+    fccList = fccList.split(",");
+
+    fccList.forEach((item) =>
+    {
+        let range = item.split(";");
+
+        if(range[0] && range[1])
+        {
+            let start = parseHexInt(range[0]);
+            let length = parseHexInt(range[1]);
+
+            if((start != undefined) && (!isNaN(start)) && (length != undefined) && (!isNaN(length)))
+            {
+                label_table.push(start);
+
+                fcc_table[start] = length;
+            }
+        }
+    });
+
     // fill label table associative array
     var re = /(\S+)\s+equ\s+(\S+)/i;
     let ltaa = document.getElementById("labelList").value;
@@ -784,6 +809,7 @@ function paste_config()
             document.getElementById("tokenTable").value = obj['tokenTable'];
             document.getElementById("fcsList").value = obj['fcsList'];
             document.getElementById("fczList").value = obj['fczList'];
+            document.getElementById("fccList").value = obj['fccList'];
             document.getElementById("labelList").value = obj['labelList'];
 
             document.getElementById(obj['file_type']).checked = true;
@@ -970,6 +996,31 @@ function print_fcb(mem, fcb )
             continue;
         }
 
+        if((j==0) && (fcc_table[fcb[i]] != undefined))
+        {
+            if(generate_label && label_table.includes(fcb[i]))
+            {
+                result += address_space + opcode_space + generate_conditional_label(fcb[i]) + "\r";
+            }
+
+            address = fcb[i];
+
+            let tokenLen = fcc_table[fcb[i]];
+            let text = "";
+
+            for(let k=0; k<tokenLen; k++)
+            {
+                text += escape_char(mem[fcb[i]]);
+                i += 1;
+            }
+
+            if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
+            result += opcode_space + conditional_caps(" fcc     ") + "\"" + text + "\"" + "\r";
+
+            fdb = jump_table.includes(fcb[i]);
+            continue;
+        }
+
         if(j==0)
         {
             if(generate_label && label_table.includes(fcb[i]))
@@ -1119,6 +1170,11 @@ function disem( mem, pc, dis, inTable )
             address = read_memory(mem, pc);
             pc = next_pc( pc, 1 );
             operand = "#$" + address.toString(16).padStart(2,"0");
+
+            if(((mnenonmic == "lda") || (mnenonmic == "ldb")) && (address > 31) && (address < 127))
+            {
+                operand += "  ; '" + String.fromCharCode(address) + "'";
+            }
         break;
 
         case "imw":    /* immediate word */

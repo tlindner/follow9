@@ -47,7 +47,7 @@ var list_opcodes = false;
 var opcode_space, address_space;
 var result;
 var print_address;
-var label_table, jump_table;
+var label_table, jump_table, fcs_table, fcz_table;
 var generate_label;
 var absIndPC;
 var label_aa;
@@ -110,6 +110,8 @@ function disassemble()
     result = "";
     label_table = new Array;
     jump_table = new Array;
+    fcs_table = new Array;
+    fcz_table = new Array;
     label_aa = new Array;
 
     if(list_opcodes)
@@ -444,6 +446,151 @@ function disassemble()
         }
     });
 
+    // Add token table addresses to transfer array
+    // A token table is two parts: a run of ASCII string tokens, each
+    // token ending on the byte whose high bit is set, followed
+    // immediately by one two-byte address per token found.
+    let tokTbl = document.getElementById("tokenTable").value;
+    jason['tokenTable'] = tokTbl;
+    tokTbl = tokTbl.split(",");
+    tokTbl.forEach((item) =>
+    {
+        let range = item.split(";");
+
+        if(range[0] && range[1])
+        {
+            let start = parseHexInt(range[0]);
+            let length = parseHexInt(range[1]);
+
+            if((start != undefined) && (!isNaN(start)) && (length != undefined) && (!isNaN(length)))
+            {
+                label_table.push(start);
+
+                // walk the ASCII token section, collecting each token's text
+                // (each token ends on the byte whose high bit is set)
+                let end = start + length;
+                let tokens = [];
+                let current = "";
+                let tokenStart = start;
+
+                for(let i = start; i < end; i++)
+                {
+                    let byte = read_memory(memory,i);
+                    current += String.fromCharCode(byte & 0x7f);
+
+                    if((byte & 0x80) == 0x80)
+                    {
+                        tokens.push(current);
+                        fcs_table[tokenStart] = current.length;
+                        current = "";
+                        tokenStart = i + 1;
+                    }
+                }
+
+                let tokenCount = tokens.length;
+
+                // the two-byte address table immediately follows the tokens
+                let addr_table = start + length;
+
+                if(tokenCount > 0)
+                {
+                    label_table.push(addr_table);
+                }
+
+                for(let n = 0; n < tokenCount; n++)
+                {
+                    let p = addr_table + (n * 2);
+                    let address = read_memory(memory,p) << 8;
+                    address += read_memory(memory,p+1);
+
+                    if((address != undefined) && (!isNaN(address)))
+                    {
+                        transfers.push(address);
+                        label_table.push(address);
+                        jump_table.push(p);
+
+                        if(label_aa[address] == undefined)
+                        {
+                            label_aa[address] = "L" + address.toString(16).padStart(4,"0").toUpperCase() + "_" + tokens[n];
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Decode standalone FCS strings: just an address, length ends at
+    // the first byte with its high bit set.
+    let fcsList = document.getElementById("fcsList").value;
+    jason['fcsList'] = fcsList;
+    fcsList = fcsList.split(",");
+
+    fcsList.forEach((item) =>
+    {
+        if(item != "")
+        {
+            let start = parseHexInt(item);
+
+            if((start != undefined) && (!isNaN(start)))
+            {
+                label_table.push(start);
+
+                let i = start;
+                let len = 0;
+
+                while(i < 65536)
+                {
+                    let byte = read_memory(memory,i);
+                    len += 1;
+                    i += 1;
+
+                    if((byte & 0x80) == 0x80)
+                    {
+                        break;
+                    }
+                }
+
+                fcs_table[start] = len;
+            }
+        }
+    });
+
+    // Decode standalone FCZ strings: just an address, null terminated
+    // (length stored includes the terminating zero byte).
+    let fczList = document.getElementById("fczList").value;
+    jason['fczList'] = fczList;
+    fczList = fczList.split(",");
+
+    fczList.forEach((item) =>
+    {
+        if(item != "")
+        {
+            let start = parseHexInt(item);
+
+            if((start != undefined) && (!isNaN(start)))
+            {
+                label_table.push(start);
+
+                let i = start;
+                let len = 0;
+
+                while(i < 65536)
+                {
+                    let byte = read_memory(memory,i);
+                    len += 1;
+                    i += 1;
+
+                    if(byte == 0x00)
+                    {
+                        break;
+                    }
+                }
+
+                fcz_table[start] = len;
+            }
+        }
+    });
+
     // fill label table associative array
     var re = /(\S+)\s+equ\s+(\S+)/i;
     let ltaa = document.getElementById("labelList").value;
@@ -634,6 +781,9 @@ function paste_config()
             document.getElementById("noFollow").value = obj['noFollow'];
             document.getElementById("transferList").value = obj['transferList'];
             document.getElementById("transferTable").value = obj['transferTable'];
+            document.getElementById("tokenTable").value = obj['tokenTable'];
+            document.getElementById("fcsList").value = obj['fcsList'];
+            document.getElementById("fczList").value = obj['fczList'];
             document.getElementById("labelList").value = obj['labelList'];
 
             document.getElementById(obj['file_type']).checked = true;
@@ -766,6 +916,60 @@ function print_fcb(mem, fcb )
 
     while( i < fcb.length )
     {
+        if((j==0) && (fcs_table[fcb[i]] != undefined))
+        {
+            if(generate_label && label_table.includes(fcb[i]))
+            {
+                result += address_space + opcode_space + generate_conditional_label(fcb[i]) + "\r";
+            }
+
+            address = fcb[i];
+
+            let tokenLen = fcs_table[fcb[i]];
+            let text = "";
+
+            for(let k=0; k<tokenLen; k++)
+            {
+                text += escape_char(mem[fcb[i]] & 0x7f);
+                i += 1;
+            }
+
+            if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
+            result += opcode_space + conditional_caps(" fcs     ") + "\"" + text + "\"" + "\r";
+
+            fdb = jump_table.includes(fcb[i]);
+            continue;
+        }
+
+        if((j==0) && (fcz_table[fcb[i]] != undefined))
+        {
+            if(generate_label && label_table.includes(fcb[i]))
+            {
+                result += address_space + opcode_space + generate_conditional_label(fcb[i]) + "\r";
+            }
+
+            address = fcb[i];
+
+            let tokenLen = fcz_table[fcb[i]];
+            let text = "";
+
+            for(let k=0; k<tokenLen; k++)
+            {
+                if(k < tokenLen-1)
+                {
+                    text += escape_char(mem[fcb[i]]);
+                }
+
+                i += 1;
+            }
+
+            if(print_address) result += conditional_caps(address.toString(16)).padStart(4,"0").padEnd(5, " ");
+            result += opcode_space + conditional_caps(" fcz     ") + "\"" + text + "\"" + "\r";
+
+            fdb = jump_table.includes(fcb[i]);
+            continue;
+        }
+
         if(j==0)
         {
             if(generate_label && label_table.includes(fcb[i]))
@@ -826,6 +1030,30 @@ function print_fcb(mem, fcb )
     }
 
     fcb.length = 0;
+}
+
+function escape_char(byte)
+{
+    switch(byte)
+    {
+        case 0x00: return "\\0";
+        case 0x07: return "\\a";
+        case 0x08: return "\\b";
+        case 0x09: return "\\t";
+        case 0x0a: return "\\n";
+        case 0x0b: return "\\v";
+        case 0x0c: return "\\f";
+        case 0x0d: return "\\r";
+        case 0x5c: return "\\\\";
+        case 0x22: return "\\\"";
+    }
+
+    if((byte > 31) && (byte < 127))
+    {
+        return String.fromCharCode(byte);
+    }
+
+    return "\\x" + byte.toString(16).padStart(2,"0");
 }
 
 function make_print(aChar)
@@ -3081,3 +3309,66 @@ const os9_codes = [
 'F$',          'F$',          'F$',          'F$',
 'F$',          'F$',          'F$',          'F$'
 ];
+
+/***************************************************************************
+ * Lightweight draggable divider between the left control pane and the
+ * right disassembly pane. No dependencies.
+ ***************************************************************************/
+
+function initSplitter()
+{
+    let panels = document.getElementById("panels");
+    let leftPane = document.getElementById("leftPane");
+    let dragBar = document.getElementById("dragBar");
+
+    if(!panels || !leftPane || !dragBar)
+    {
+        return;
+    }
+
+    let dragging = false;
+
+    dragBar.addEventListener("mousedown", (e) =>
+    {
+        dragging = true;
+        dragBar.classList.add("dragging");
+        document.body.style.userSelect = "none";
+        e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", (e) =>
+    {
+        if(!dragging)
+        {
+            return;
+        }
+
+        let rect = panels.getBoundingClientRect();
+        let minWidth = 200;
+        let newWidth = e.clientX - rect.left;
+
+        if(newWidth < minWidth)
+        {
+            newWidth = minWidth;
+        }
+
+        if(newWidth > rect.width - minWidth - dragBar.offsetWidth)
+        {
+            newWidth = rect.width - minWidth - dragBar.offsetWidth;
+        }
+
+        leftPane.style.width = newWidth + "px";
+    });
+
+    window.addEventListener("mouseup", () =>
+    {
+        if(dragging)
+        {
+            dragging = false;
+            dragBar.classList.remove("dragging");
+            document.body.style.userSelect = "";
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", initSplitter);

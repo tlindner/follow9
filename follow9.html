@@ -4,9 +4,14 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>follow9</title>
 <script type="text/javascript" src="follow9.js"></script>
+<style>
+#dragBar { width:6px; cursor:col-resize; background:#ddd; flex:0 0 auto; }
+#dragBar:hover, #dragBar.dragging { background:#aaa; }
+</style>
 </head>
 <body>
-<div style="float:left;width:40%;">
+<div id="panels" style="display:flex;">
+<div id="leftPane" style="width:40%;min-width:200px;">
 <h2>follow9 - Javascript 6x09 Disassembler</h2>
 <label for="datafile">File:</label>
 <input onclick="newFile()" type="file" id="datafile" name="datafile" required minlength="4" maxlength="8" size="10" />
@@ -20,6 +25,15 @@
 <div style="margin-top:12px;"><label for="transferTable">Transfer Tables:</label><br />
 <textarea id="transferTable" name="transferTable" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1;length1,address2;length2,…"></textarea>
 <font size="-1">List of addresses and lengths for embedded jump tables.</font></div>
+<div style="margin-top:12px;"><label for="tokenTable">Token Tables:</label><br />
+<textarea id="tokenTable" name="tokenTable" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1;length1,address2;length2,…"></textarea>
+<font size="-1">List of addresses and lengths of token tables (high-bit-terminated ASCII tokens followed by their two-byte addresses).</font></div>
+<div style="margin-top:12px;"><label for="fcsList">FCS Strings:</label><br />
+<textarea id="fcsList" name="fcsList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
+<font size="-1">List of addresses to decode as FCS strings; length ends at the first byte with its high bit set.</font></div>
+<div style="margin-top:12px;"><label for="fczList">FCZ Strings:</label><br />
+<textarea id="fczList" name="fczList" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
+<font size="-1">List of addresses to decode as FCZ strings; null (zero byte) terminated.</font></div>
 <div style="margin-top:12px;"><label for="noFollow">No Follow Addresses:</label><br />
 <textarea id="noFollow" name="noFollow" rows="2" cols="55" onchange="disassemble()" spellcheck="false" placeholder="address1,address2,…"></textarea>
 <font size="-1">List of addressed that won't disassemble.</font></div>
@@ -53,11 +67,13 @@ https://www.macmess.org/follow9.html
 <br>
 https://github.com/tlindner/follow9
 </div></div>
-<div style="float:right;width:60%;">
+<div id="dragBar"></div>
+<div id="rightPane" style="flex:1;min-width:200px;">
 <label for="disassembly">Disassembly:</label><br />
 <textarea id="disassembly" name="disassembly" rows="42" cols="80" spellcheck="false" style="font-family: 'Courier New', Courier, monospace; white-space: pre; tab-size: 4;">
 This is where the disassembly will go.
 </textarea>
+</div>
 </div>
 <br>
 

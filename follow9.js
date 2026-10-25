@@ -93,17 +93,125 @@ function newFile()
     }
 }
 
+// Defaults match the webpage. Configuration keys are shared with saved web configurations.
+const defaultConfig = Object.freeze({
+    hd6309: false, allCaps: false, listOpcodes: true, printAddress: true,
+    genLabel: true, absIndPC: false, hexOffset: false, os9SWI2: false,
+    json: false, offset: "0", file_type: "raw", noFollow: "", transferList: "",
+    transferTable: "", tokenTable: "", fcsList: "", fczList: "", fccList: "", labelList: ""
+});
+
+function normalizeConfig(options)
+{
+    if(!options || typeof options != "object" || Array.isArray(options))
+        throw new TypeError("Configuration must be an object.");
+
+    const config = {...defaultConfig};
+    for(const [key, value] of Object.entries(options))
+    {
+        if(!Object.hasOwn(defaultConfig, key))
+            throw new Error("Unknown configuration option: " + key);
+        if(key == "offset" && Number.isInteger(value))
+            config[key] = String(value);
+        else if(typeof value != typeof defaultConfig[key])
+            throw new TypeError("Invalid type for configuration option: " + key);
+        else
+            config[key] = value;
+    }
+    if(!["raw", "decb", "os9"].includes(config.file_type))
+        throw new Error("file_type must be raw, decb, or os9.");
+
+    function address(value)
+    {
+        if(!/^(?:\$[0-9a-f]+|0x[0-9a-f]+|[0-9]+)$/i.test(value.trim()))
+            throw new Error("Invalid address or length: " + value);
+        const number = parseHexInt(value.trim());
+        if(number < 0 || number > 65535)
+            throw new Error("Address or length out of range: " + value);
+    }
+    address(config.offset);
+    for(const key of ["noFollow", "transferList", "fcsList", "fczList"])
+    {
+        if(config[key].trim() == "") continue;
+        for(const item of config[key].split(",")) address(item);
+    }
+    for(const key of ["transferTable", "tokenTable", "fccList"])
+    {
+        if(config[key].trim() == "") continue;
+        for(const item of config[key].split(","))
+        {
+            const range = item.split(";");
+            if(range.length != 2) throw new Error("Expected address;length in " + key);
+            range.forEach(address);
+            if(parseHexInt(range[0].trim()) + parseHexInt(range[1].trim()) > 65536)
+                throw new Error("Table extends beyond memory in " + key);
+            if(key == "transferTable" && parseHexInt(range[1].trim()) % 2 != 0)
+                throw new Error("Transfer table length must be even.");
+        }
+    }
+    return config;
+}
+
+function toBytes(data)
+{
+    if(data instanceof ArrayBuffer) return new Uint8Array(data);
+    if(data instanceof Uint8Array) return data;
+    throw new TypeError("Input must be an ArrayBuffer or Uint8Array (including a Node Buffer).");
+}
+
+function validateDECB(view)
+{
+    let position = 0;
+    while(position < view.length)
+    {
+        if(position + 5 > view.length) throw new Error("Truncated DECB header.");
+        const marker = view[position];
+        const length = (view[position + 1] << 8) | view[position + 2];
+        position += 5;
+        if(marker == 0xff)
+        {
+            if(length != 0) throw new Error("Malformed DECB postamble.");
+            return; // Optional symbols may follow the postamble.
+        }
+        if(marker != 0) throw new Error("Malformed DECB binary. Wrong preamble.");
+        position += length;
+        if(position > view.length) throw new Error("Truncated DECB data block.");
+    }
+    throw new Error("Missing DECB postamble.");
+}
+
 function disassemble()
 {
-    allow_6309_codes = document.getElementById("hd6309").checked;
-    all_caps = document.getElementById("allCaps").checked;
-    list_opcodes = document.getElementById("listOpcodes").checked;
-    print_address = document.getElementById("printAddress").checked;
-    generate_label = document.getElementById("genLabel").checked;
-    absIndPC = document.getElementById("absIndPC").checked;
-    index_hex_register_offset = document.getElementById("hexOffset").checked;
-    jason_on = document.getElementById("json").checked;
-    os9SWI2 = document.getElementById("os9SWI2").checked;
+    const config = {};
+    for(const key of Object.keys(defaultConfig))
+    {
+        if(key == "file_type")
+            config[key] = document.querySelector("input[name=file_type]:checked").value;
+        else
+            config[key] = document.getElementById(key)[typeof defaultConfig[key] == "boolean" ? "checked" : "value"];
+    }
+    try
+    {
+        document.getElementById("disassembly").value = disassembleBytes(buffer, config);
+    }
+    catch(error)
+    {
+        document.getElementById("disassembly").value = error.message;
+    }
+}
+
+function disassembleBytes(data, options = {})
+{
+    const config = normalizeConfig(options);
+    allow_6309_codes = config.hd6309;
+    all_caps = config.allCaps;
+    list_opcodes = config.listOpcodes;
+    print_address = config.printAddress;
+    generate_label = config.genLabel;
+    absIndPC = config.absIndPC;
+    index_hex_register_offset = config.hexOffset;
+    jason_on = config.json;
+    os9SWI2 = config.os9SWI2;
 
     let jason = {hd6309:allow_6309_codes, allCaps:all_caps,listOpcodes:list_opcodes,printAddress:print_address,genLabel:generate_label,absIndPC:absIndPC,hexOffset:index_hex_register_offset,os9SWI2:os9SWI2};
 
@@ -134,19 +242,21 @@ function disassemble()
     }
 
     let memory = new Array(65536);
-    let view = new Uint8Array(buffer);
-    let offset = document.getElementById("offset").value;
+    let view = toBytes(data);
+    let offset = config.offset;
     jason['offset']=offset;
     offset = parseHexInt(offset);
 
+    if(config.file_type != "decb" && view.length > 65536)
+        throw new Error("Input exceeds the 64 KiB address space.");
+
     if(view.length == 0)
     {
-        document.getElementById("disassembly").value = "Data file empty."
-        return;
+        throw new Error("Data file empty.");
     }
 
     // build no follow array
-    let no_follow = document.getElementById("noFollow").value;
+    let no_follow = config.noFollow;
     jason['noFollow'] = no_follow;
     no_follow = no_follow.split(",");
 
@@ -157,7 +267,7 @@ function disassemble()
 
     // build transfer address array
     let transfers;
-    let preTransfer = document.getElementById("transferList").value;
+    let preTransfer = config.transferList;
     jason['transferList'] = preTransfer;
     if(preTransfer != "")
     {
@@ -167,7 +277,7 @@ function disassemble()
         {
             transfers[i] = parseHexInt(transfers[i]);
 
-            if((transfers[i] != undefined) || (!isNan(transfers[i])))
+            if((transfers[i] != undefined) && (!isNaN(transfers[i])))
             {
                 label_table.push(transfers[i]);
             }
@@ -178,7 +288,7 @@ function disassemble()
         transfers = new Array;
     }
 
-    let file_type = document.querySelector("input[name=file_type]:checked").value;
+    let file_type = config.file_type;
     jason['file_type'] = file_type;
     switch(file_type)
     {
@@ -193,6 +303,7 @@ function disassemble()
 
         case "decb":
             // Disk Extended Color BASIC allows discontiguous segements and an execution address
+            validateDECB(view);
             let i=0;
             let state = 0;
             let length, address;
@@ -213,8 +324,7 @@ function disassemble()
                         }
                         else
                         {
-                            document.getElementById("disassembly").value = "Malformed DECB binary. Wrong preamble."
-                            return;
+                            throw new Error("Malformed DECB binary. Wrong preamble.");
                         }
                     break;
 
@@ -235,7 +345,7 @@ function disassemble()
 
                     case 4:
                         address += view[i];
-                        state = 5;
+                        state = length == 0 ? 0 : 5;
                     break;
 
                     case 5:
@@ -261,8 +371,7 @@ function disassemble()
 
                         if(address != 0)
                         {
-                            document.getElementById("disassembly").value = "Malformed DECB postamble."
-                            return;
+                            throw new Error("Malformed DECB postamble.");
                         }
                     break;
 
@@ -362,7 +471,7 @@ function disassemble()
 
             if((view.length > 1) && (view[0] == 0x87) && (view[1] == 0xcd))
             {
-                if(view.length>9)
+                if(view.length>10)
                 {
                     let address;
 
@@ -402,21 +511,17 @@ function disassemble()
             }
             else
             {
-                document.getElementById("disassembly").value = "Error with OS-9 Decode: " + error;
-                return;
+                throw new Error("Error with OS-9 Decode: " + error);
             }
 
         break;
 
         default:
-            document.getElementById("disassembly").value = "Unknown value for file_type.";
-            return;
+            throw new Error("Unknown value for file_type.");
     }
 
-    document.getElementById("disassembly").value = "";
-
     // Add transfer table addresses to transfer array
-    let ttl = document.getElementById("transferTable").value;
+    let ttl = config.transferTable;
     jason['transferTable'] = ttl;
     ttl = ttl.split(",");
     ttl.forEach((item) =>
@@ -451,7 +556,7 @@ function disassemble()
     // A token table is two parts: a run of ASCII string tokens, each
     // token ending on the byte whose high bit is set, followed
     // immediately by one two-byte address per token found.
-    let tokTbl = document.getElementById("tokenTable").value;
+    let tokTbl = config.tokenTable;
     jason['tokenTable'] = tokTbl;
     tokTbl = tokTbl.split(",");
     tokTbl.forEach((item) =>
@@ -522,7 +627,7 @@ function disassemble()
 
     // Decode standalone FCS strings: just an address, length ends at
     // the first byte with its high bit set.
-    let fcsList = document.getElementById("fcsList").value;
+    let fcsList = config.fcsList;
     jason['fcsList'] = fcsList;
     fcsList = fcsList.split(",");
 
@@ -558,7 +663,7 @@ function disassemble()
 
     // Decode standalone FCZ strings: just an address, null terminated
     // (length stored includes the terminating zero byte).
-    let fczList = document.getElementById("fczList").value;
+    let fczList = config.fczList;
     jason['fczList'] = fczList;
     fczList = fczList.split(",");
 
@@ -594,7 +699,7 @@ function disassemble()
 
     // Decode FCC strings: address and length, plain ASCII characters
     // with no terminator.
-    let fccList = document.getElementById("fccList").value;
+    let fccList = config.fccList;
     jason['fccList'] = fccList;
     fccList = fccList.split(",");
 
@@ -618,7 +723,7 @@ function disassemble()
 
     // fill label table associative array
     var re = /(\S+)\s+equ\s+(\S+)/i;
-    let ltaa = document.getElementById("labelList").value;
+    let ltaa = config.labelList;
     jason['labelList'] = ltaa;
     ltaa = ltaa.split("\n");
     ltaa.forEach((item) =>
@@ -696,8 +801,7 @@ function disassemble()
                     pc = transfers.pop();
                 break;
                 default:
-                    document.getElementById("disassembly").value = "Fatal error: Unimplemented pc_mode at address: $" + pc.toString(16).padStart(4,"0");
-                    return;
+                    throw new Error("Fatal error: Unimplemented pc_mode at address: $" + pc.toString(16).padStart(4,"0"));
             }
         }
         else
@@ -722,7 +826,7 @@ function disassemble()
     }
 
     // pretty print disassembly
-    state = 0;
+    let state = 0;
     let fcb = new Array;
 
     for(let i=0; i<65536; i++)
@@ -789,7 +893,7 @@ function disassemble()
         result += "\r\r\r" + JSON.stringify(jason);
     }
 
-    document.getElementById("disassembly").value = result;
+    return result;
 }
 
 function paste_config()
@@ -3435,4 +3539,8 @@ function initSplitter()
     });
 }
 
-document.addEventListener("DOMContentLoaded", initSplitter);
+if(typeof document != "undefined")
+    document.addEventListener("DOMContentLoaded", initSplitter);
+
+if(typeof module != "undefined" && module.exports)
+    module.exports = {disassembleBytes, defaultConfig};

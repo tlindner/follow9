@@ -1,0 +1,16 @@
+{
+    "name": "follow9",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Code-following 6809 and HD6309 disassembler for browsers and agents",
+    "main": "follow9.js",
+    "bin": {
+        "follow9": "follow9-cli.js"
+    },
+    "scripts": {
+        "test": "node --test tests/agent.test.js"
+    },
+    "engines": {
+        "node": ">=18"
+    }
+}

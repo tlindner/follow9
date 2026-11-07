@@ -78,6 +78,7 @@ Configuration keys match the webpage:
 | `labelList` | Newline-separated assembler equates | `""` |
 | `hd6309`, `allCaps`, `absIndPC`, `hexOffset`, `os9SWI2` | Boolean | `false` |
 | `listOpcodes`, `printAddress`, `genLabel` | Boolean | `true` |
+| `colorBasicSkips` | Recognize overlapping Color BASIC skip instructions | `false` |
 | `json` | Append saved configuration JSON to the assembly listing | `false` |
 
 Numbers in strings accept decimal, `$hex`, or `0xhex`, in the range 0–65535.

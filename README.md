@@ -27,3 +27,22 @@ configuration defaults and argument syntax. See [AGENT_USAGE.md](AGENT_USAGE.md)
 for the complete agent interface.
 
 Run the automated tests with `npm test` or `node --test tests/agent.test.js`.
+
+Enable **Recognize Color BASIC skip idioms** (CLI: `--color-basic-skips`,
+configuration: `colorBasicSkips`) to emit `FCB SKP1`, `FCB SKP2`, and `FCB SKP1LD`
+with their equates. Recognition requires a followed alternate entry immediately
+past the opcode, containing a one-byte instruction for SKP1/SKP1LD or a two-byte
+instruction for SKP2. Branch targets and explicit entry points supply these
+entries. The option defaults to off; ordinary immediate instructions remain
+unchanged when no alternate entry is followed. The two-byte `TST` ($7D) and
+`LDX #` ($8E) skip forms are emitted as numeric `FCB` directives.
+
+For Color BASIC 1.3, see [the example configuration](examples/color-basic-1.3.json).
+Its keyword strings and dispatch addresses occupy separate regions; do not use
+`$AA66;170` as a token table. Use the example's FCS strings and transfer tables.
+Explicit entry points include copied RAM routines, interrupt handlers, and code
+reached through return-address adjustments that code following cannot infer.
+
+The [Extended Color BASIC 1.1 configuration](examples/extended-basic-1.1.json)
+provides the corresponding tables and reference-confirmed entry points for
+`extbas11.rom`.

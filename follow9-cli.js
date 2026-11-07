@@ -26,7 +26,7 @@ All webpage settings are available through --config. Additional flags:
   --no-follow LIST           Addresses to exclude from code following
   --label-list TEXT          Assembler equates, e.g. 'start equ $4000'
   --hd6309 --all-caps --list-opcodes --print-address --gen-label
-  --abs-ind-pc --hex-offset --os9-swi2
+  --abs-ind-pc --hex-offset --os9-swi2 --color-basic-skips
 Boolean flags accept a --no- prefix (e.g. --no-list-opcodes).
 Numbers accept decimal, $hex, or 0xhex. Quote shell arguments containing $ or ;.
 Raw files need explicit entry points to decode code; otherwise they emit data.
@@ -41,7 +41,7 @@ function main(args)
         "fcs-list": "fcsList", "fcz-list": "fczList", "fcc-list": "fccList",
         "no-follow": "noFollow", "label-list": "labelList", hd6309: "hd6309",
         "all-caps": "allCaps", "list-opcodes": "listOpcodes", "print-address": "printAddress",
-        "gen-label": "genLabel", "abs-ind-pc": "absIndPC", "hex-offset": "hexOffset", "os9-swi2": "os9SWI2"
+        "gen-label": "genLabel", "abs-ind-pc": "absIndPC", "hex-offset": "hexOffset", "os9-swi2": "os9SWI2", "color-basic-skips": "colorBasicSkips"
     };
     let file, configFile, json = false, positional = false;
     const overrides = {};

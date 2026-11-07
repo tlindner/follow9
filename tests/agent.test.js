@@ -135,3 +135,110 @@ test("CLI reads saved web configurations and flags override them", async () =>
         fs.rmSync(directory, {recursive: true, force: true});
     }
 });
+
+test("Color BASIC skip idioms preserve alternate entries in either traversal order", () =>
+{
+    for(const [opcode, bytes, name] of [
+        [0x21, [0x5f], "skp1"],
+        [0x8c, [0xc6, 0x60], "skp2"],
+        [0x86, [0x5f], "skp1ld"]
+    ])
+    {
+        const binary = Buffer.from([opcode, ...bytes, 0x39]);
+        for(const transferList of ["$4000,$4001", "$4001,$4000"])
+        {
+            const options = {...config, transferList, colorBasicSkips: true};
+            const output = disassembleBytes(binary, options);
+            assert.match(output, new RegExp(name + " equ \\$" + opcode.toString(16)));
+            assert.match(output, new RegExp("4000 " + opcode.toString(16) + "\\s+fcb\\s+" + name));
+            assert.match(output, /4001 .*\s(clrb|ldb)/);
+            assert.match(output, /\srts/);
+            assert.doesNotMatch(disassembleBytes(binary, {...options, colorBasicSkips: false}), /skp/);
+        }
+        // Without an alternate entry, these are ordinary instructions.
+        assert.doesNotMatch(disassembleBytes(binary, {...config, colorBasicSkips: true}), /skp/);
+    }
+});
+
+test("Color BASIC detection rejects entries inside ordinary instruction operands", () =>
+{
+    const binary = Buffer.from([0xc6, 0xff, 0xbd, 0xa2, 0xaa, 0x0f, 0x39]);
+    const output = disassembleBytes(binary, {
+        offset: "$a444", transferList: "$a445,$a444", colorBasicSkips: true
+    });
+    assert.match(output, /a444 c6ff\s+ldb\s+#\$ff/);
+    assert.match(output, /a446 bda2aa\s+jsr/);
+    assert.doesNotMatch(output, /a445 ffbda2\s+stu/);
+    assert.doesNotMatch(output, /a448 aa0f\s+ora/);
+    assert.doesNotMatch(output, /fcb\s+skp/);
+});
+
+test("Color BASIC overlap resolution removes bogus paths regardless of entry order", () =>
+{
+    const binary = Buffer.from([
+        0x26, 0x0c, 0x96, 0x79, 0x27, 0x03, 0xbd, 0xa2, 0xa8,
+        0xc6, 0xff, 0xbd, 0xa2, 0xaa, 0x0f, 0x78, 0x39
+    ]);
+    for(const transferList of ["$a43b,$a445", "$a445,$a43b"])
+    {
+        const output = disassembleBytes(binary, {
+            offset: "$a43b", transferList, colorBasicSkips: true
+        });
+        assert.match(output, /a444 c6ff\s+ldb\s+#\$ff/);
+        assert.match(output, /a446 bda2aa\s+jsr/);
+        assert.match(output, /a449 0f78\s+clr/);
+        assert.match(output, /a44b 39\s+rts/);
+        assert.doesNotMatch(output, /\sstu\s|\sora\s|\sasl\s/);
+        assert.doesNotMatch(output, /LBDA2|L39BD/);
+    }
+});
+
+test("Color BASIC TST and LDX skip forms preserve alternate entries", () =>
+{
+    for(const [opcode, bytes, mnemonic] of [[0x7d, [0x1a, 1], "orcc"], [0x8e, [0x8d, 0], "bsr"]])
+    {
+        for(const transferList of ["$4000,$4001", "$4001,$4000"])
+        {
+            const output = disassembleBytes(Buffer.from([opcode, ...bytes, 0x39]), {
+                ...config, transferList, colorBasicSkips: true
+            });
+            assert.match(output, new RegExp("4000 .*fcb\\s+\\$"+opcode.toString(16)));
+            assert.match(output, new RegExp("4001 .*\\s"+mnemonic+"\\s"));
+            assert.match(output, /4003 39\s+rts/);
+        }
+    }
+});
+
+test("labels inside operands retain their addresses as equates", () =>
+{
+    const output = disassembleBytes(Buffer.from([0xc6, 0xff, 0x39]), {
+        ...config, colorBasicSkips: true, labelList: "inside equ $4001"
+    });
+    assert.match(output, /inside equ \$4001/);
+    assert.doesNotMatch(output, /inside\r/);
+});
+
+test("extended addressing preserves its width at direct-page addresses", () =>
+{
+    for(const [opcode, mnemonic] of [[0xb6, "lda"], [0xbe, "ldx"], [0xbf, "stx"]])
+    {
+        const output = disassembleBytes(Buffer.from([opcode, 0, 0x8d, 0x39]), config);
+        assert.match(output, new RegExp(mnemonic+"\\s+>L008D"));
+    }
+});
+
+test("indirect indexed addressing preserves register, displacement, and bracket syntax", () =>
+{
+    for(const [bytes, operand] of [
+        [[0xa6, 0x99, 0x12, 0x34], "[>4660,x]"],
+        [[0xa6, 0xb9, 0xff, 0xfe], "[>-2,y]"],
+        [[0xa6, 0x98, 0xfe], "[<-2,x]"],
+        [[0xa6, 0x9f, 0x00, 0x88], "[>L0088]"],
+        [[0xa6, 0x9c, 0x00], "[<L4003,pcr]"],
+        [[0xa6, 0x9d, 0x00, 0x00], "[>L4004,pcr]"]
+    ])
+    {
+        const output = disassembleBytes(Buffer.from([...bytes, 0x39]), config);
+        assert.ok(output.includes("lda     "+operand), output);
+    }
+});

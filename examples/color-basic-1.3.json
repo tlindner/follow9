@@ -1,0 +1,22 @@
+{
+  "hd6309": false,
+  "allCaps": false,
+  "listOpcodes": true,
+  "printAddress": true,
+  "genLabel": true,
+  "absIndPC": false,
+  "hexOffset": false,
+  "os9SWI2": false,
+  "colorBasicSkips": true,
+  "offset": "$a000",
+  "noFollow": "",
+  "transferList": "$a027,$a00e,$a073,$a0f6,$a0f9,$a0fc,$a0e8,$a108,$a11d,$a129,$a12c,$a12f,$a13a,$ad7f,$bb5c,$bb8f,$beff",
+  "file_type": "raw",
+  "transferTable": "$a000;14,$aa29;40,$ab67;72,$aa52;2,$aa55;2,$aa58;2,$aa5b;2,$aa5e;2,$aa61;2,$aa64;2,$b1cc;2,$bff0;16",
+  "tokenTable": "",
+  "fcsList": "$aa66,$aa69,$aa6b,$aa6f,$aa73,$aa75,$aa79,$aa7e,$aa80,$aa85,$aa88,$aa8c,$aa8f,$aa93,$aa96,$aa9d,$aaa3,$aaa7,$aaab,$aaaf,$aab3,$aab8,$aabb,$aac0,$aac5,$aac9,$aace,$aad3,$aad6,$aadb,$aade,$aae3,$aae8,$aaed,$aaf1,$aaf6,$aafa,$aafc,$aaff,$ab03,$ab06,$ab0a,$ab0d,$ab0e,$ab0f,$ab10,$ab11,$ab12,$ab15,$ab17,$ab18,$ab19,$ab1a,$ab1d,$ab20,$ab23,$ab26,$ab29,$ab2c,$ab30,$ab33,$ab37,$ab3a,$ab3d,$ab41,$ab44,$ab4a,$ab4f,$ab55,$ab59,$ab5e,$ab64",
+  "fczList": "",
+  "fccList": "",
+  "labelList": "",
+  "json": false
+}

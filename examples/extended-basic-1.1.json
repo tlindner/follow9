@@ -1,0 +1,22 @@
+{
+  "hd6309": false,
+  "allCaps": false,
+  "listOpcodes": true,
+  "printAddress": true,
+  "genLabel": true,
+  "absIndPC": false,
+  "hexOffset": false,
+  "os9SWI2": false,
+  "colorBasicSkips": true,
+  "json": false,
+  "offset": "$8000",
+  "file_type": "raw",
+  "noFollow": "",
+  "transferList": "$8002,$80c0,$813c,$8168,$8273,$8286,$82b9,$8304,$87e5,$8846,$88f0,$894c,$8ce2,$8cf1,$8e37,$8e90,$92a6,$92c2,$92f4,$950d,$951b,$9894,$989b,$98a1",
+  "transferTable": "$81f0;46,$8257;28",
+  "tokenTable": "",
+  "fcsList": "$8183,$8186,$818a,$818e,$8193,$8196,$8199,$819d,$81a1,$81a5,$81ab,$81b1,$81b7,$81bc,$81c2,$81c7,$81ca,$81cd,$81d1,$81d6,$81db,$81df,$81e4,$81e9,$81eb,$821e,$8221,$8224,$8227,$822a,$822d,$8230,$8233,$8236,$823a,$8240,$8245,$824a,$8250",
+  "fczList": "",
+  "fccList": "",
+  "labelList": ""
+}

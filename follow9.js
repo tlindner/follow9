@@ -96,7 +96,7 @@ function newFile()
 // Defaults match the webpage. Configuration keys are shared with saved web configurations.
 const defaultConfig = Object.freeze({
     hd6309: false, allCaps: false, listOpcodes: true, printAddress: true,
-    genLabel: true, absIndPC: false, hexOffset: false, os9SWI2: false,
+    genLabel: true, absIndPC: false, hexOffset: false, os9SWI2: false, colorBasicSkips: false,
     json: false, offset: "0", file_type: "raw", noFollow: "", transferList: "",
     transferTable: "", tokenTable: "", fcsList: "", fczList: "", fccList: "", labelList: ""
 });
@@ -243,6 +243,8 @@ function disassembleBytes(data, options = {})
 
     let memory = new Array(65536);
     let view = toBytes(data);
+    jason.colorBasicSkips = config.colorBasicSkips;
+
     let offset = config.offset;
     jason['offset']=offset;
     offset = parseHexInt(offset);
@@ -740,85 +742,177 @@ function disassembleBytes(data, options = {})
     });
 
     // Fill disassembly array
-    let pc = transfers.pop();
+    let pc;
     let dis = new Array;
     let dis_comment = new Array;
+    let instruction_lengths = new Array;
+    let instruction_owners = new Array;
+    const skip_idioms = {0x21: ["skp1", 1], 0x8c: ["skp2", 2], 0x86: ["skp1ld", 1],
+        0x7d: [null, 2], 0x8e: [null, 2]};
 
-    while(pc != undefined)
+    const initial_transfers = transfers.slice();
+    const initial_labels = label_table.slice();
+    const rejected_entries = new Set;
+    let retry;
+    do
     {
-        if(memory[pc] == undefined)
+        retry = false;
+        transfers = initial_transfers.slice();
+        label_table = initial_labels.slice();
+        dis = [];
+        dis_comment = [];
+        instruction_lengths = [];
+        instruction_owners = [];
+        pc = transfers.pop();
+        while(pc != undefined)
         {
-            // unasigned memory, move on
-            pc = transfers.pop();
-        }
-        else if(dis[pc] == undefined)
-        {
-            // check address if on no follow list
-            if(no_follow.includes(pc))
+            if(memory[pc] == undefined)
+            {
+                // unasigned memory, move on
+                pc = transfers.pop();
+            }
+            else if(dis[pc] == undefined || (config.colorBasicSkips && dis[pc] == ""))
+            {
+                // check address if on no follow list
+                if(no_follow.includes(pc) || rejected_entries.has(pc))
+                {
+                    pc = transfers.pop();
+                    continue;
+                }
+
+                // disassemble new PC
+                let address, pc_mode;
+                let start = pc;
+
+                // Probe overlaps before changing the listing or following their targets.
+                // Only the exact operand of a skip idiom may be another instruction.
+                const label_count = label_table.length;
+                let decoded = config.colorBasicSkips ? [] : dis;
+                let comments = config.colorBasicSkips ? [] : dis_comment;
+                const table = allow_6309_codes ? opcodes_6309_p1 : opcodes_6809_p1;
+                [pc, address, pc_mode] = disem(memory, pc, decoded, table, comments);
+                const length = (pc - start) & 0xffff;
+                if(config.colorBasicSkips)
+                {
+                    let valid = true;
+                    for(let i=0; i<length; i++)
+                    {
+                        const owner = instruction_owners[(start+i)&0xffff];
+                        if(owner == undefined) continue;
+                        const earlier = ((owner+1)&0xffff) == start ? owner : start;
+                        const later = earlier == owner ? start : owner;
+                        const idiom = skip_idioms[memory[earlier]];
+                        const earlierLength = earlier == start ? length : instruction_lengths[earlier];
+                        const laterLength = later == start ? length : instruction_lengths[later];
+                        if(!idiom || later != ((earlier+1)&0xffff) ||
+                            earlierLength != idiom[1]+1 || laterLength != idiom[1])
+                        {
+                            // If an operand entry was visited first, discard that path
+                            // and replay code following so its bogus successors vanish too.
+                            if(owner > start && owner < start+length)
+                            {
+                                rejected_entries.add(owner);
+                                retry = true;
+                            }
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if(!valid)
+                    {
+                        label_table.length = label_count;
+                        if(retry) break;
+                        pc = transfers.pop();
+                        continue;
+                    }
+                    dis[start] = decoded[start];
+                    dis_comment[start] = comments[start];
+                    for(let i=1; i<length; i++)
+                    {
+                        const byte = (start+i)&0xffff;
+                        if(dis[byte] == undefined) dis[byte] = "";
+                    }
+                }
+                instruction_lengths[start] = length;
+                for(let i=0; i<length; i++)
+                    instruction_owners[(start+i)&0xffff] = start;
+
+                switch( pc_mode ) {
+                    case "pc_nop":     /* no effect */
+                    break;
+                    case "pc_jmp":     /* jump */
+                        pc = address;
+                    break;
+                    case "pc_bra":     /* branch, or subroutine jump */
+                        if(address != undefined)
+                        {
+                            transfers.push(address);
+                        }
+                    break;
+                    case "pc_tfr":     /* register transfer */
+                        if((read_memory(memory,pc-1) & 0x05) == 0x05)
+                        {
+                            // PC overwritten (at end of subroutine)
+                            pc = transfers.pop();
+                        }
+                    break;
+                    case "pc_ret":     /* return from subroutine */
+                        pc = transfers.pop();
+                    break;
+                    case "pc_pul":     /* possible end of execution */
+                        if((read_memory(memory, pc-1) & 0x80) == 0x80)
+                        {
+                            // PC pulled, at end of subroutine
+                            pc = transfers.pop();
+                        }
+                    break;
+                    case "pc_end":     /* end of execution */
+                        pc = transfers.pop();
+                    break;
+                    default:
+                        throw new Error("Fatal error: Unimplemented pc_mode at address: $" + pc.toString(16).padStart(4,"0"));
+                }
+            }
+            else
             {
                 pc = transfers.pop();
-                continue;
-            }
-
-            // disassemble new PC
-            let address, pc_mode;
-
-            if(allow_6309_codes)
-                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6309_p1, dis_comment);
-            else
-                [pc, address, pc_mode] = disem(memory, pc, dis, opcodes_6809_p1, dis_comment);
-
-            switch( pc_mode ) {
-                case "pc_nop":     /* no effect */
-                break;
-                case "pc_jmp":     /* jump */
-                    pc = address;
-                break;
-                case "pc_bra":     /* branch, or subroutine jump */
-                    if(address != undefined)
-                    {
-                        transfers.push(address);
-                    }
-                break;
-                case "pc_tfr":     /* register transfer */
-                    if((read_memory(memory,pc-1) & 0x05) == 0x05)
-                    {
-                        // PC overwritten (at end of subroutine)
-                        pc = transfers.pop();
-                    }
-                break;
-                case "pc_ret":     /* return from subroutine */
-                    pc = transfers.pop();
-                break;
-                case "pc_pul":     /* possible end of execution */
-                    if((read_memory(memory, pc-1) & 0x80) == 0x80)
-                    {
-                        // PC pulled, at end of subroutine
-                        pc = transfers.pop();
-                    }
-                break;
-                case "pc_end":     /* end of execution */
-                    pc = transfers.pop();
-                break;
-                default:
-                    throw new Error("Fatal error: Unimplemented pc_mode at address: $" + pc.toString(16).padStart(4,"0"));
             }
         }
-        else
+
+    } while(retry);
+
+    // Require an alternate instruction entry covering exactly the skipped bytes.
+    // Ordinary immediate loads and comparisons must keep their normal decoding.
+    if(config.colorBasicSkips)
+    {
+        const idioms = skip_idioms;
+        const used = new Set;
+        for(let start=0; start<65536; start++)
         {
-            pc = transfers.pop();
+            const idiom = idioms[memory[start]];
+            if(!idiom || instruction_lengths[start] != idiom[1]+1 ||
+                instruction_lengths[(start+1)&0xffff] != idiom[1]) continue;
+
+            const name = idiom[0] || "$" + memory[start].toString(16);
+            dis[start] = (list_opcodes ? memory[start].toString(16).padStart(2,"0").padEnd(16," ") : "") + " fcb     " + name;
+            delete dis_comment[start];
+            if(idiom[0]) used.add(memory[start]);
+        }
+        for(const opcode of used)
+        {
+            result += conditional_caps(address_space + opcode_space + idioms[opcode][0] + " equ $" + opcode.toString(16) + "\r");
         }
     }
 
     // Sort and unique label table
-    label_table = [...new Set(label_table)].sort();
+    label_table = [...new Set(label_table)].sort((a, b) => a - b);
 
     // print out of bounds labels as equates
     if(generate_label)
     {
         label_table.forEach((item) =>
         {
-            if(memory[item] == undefined)
+            if(memory[item] == undefined || dis[item] == "")
             {
                 result += address_space + opcode_space + generate_conditional_label(item) + conditional_caps(" equ $" + item.toString(16).padStart(4,"0")) + "\r";
             }
@@ -850,7 +944,7 @@ function disassembleBytes(data, options = {})
             }
 
             // label
-            if(generate_label && label_table.includes(i))
+            if(generate_label && label_table.includes(i) && dis[i] != "")
             {
                 result += address_space + opcode_space + generate_conditional_label(i) + "\r";
             }
@@ -912,6 +1006,7 @@ function paste_config()
             document.getElementById("genLabel").checked = obj['genLabel'];
             document.getElementById("absIndPC").checked = obj['absIndPC'];
             document.getElementById("hexOffset").checked = obj['hexOffset'];
+            document.getElementById("colorBasicSkips").checked = obj['colorBasicSkips'] === true;
             document.getElementById("os9SWI2").checked = obj['os9SWI2'];
 
             document.getElementById("offset").value = obj['offset'];
@@ -1308,7 +1403,7 @@ function disem( mem, pc, dis, inTable, dis_comment )
             pc = next_pc( pc, 1 );
             address += read_memory(mem, pc);
             pc = next_pc( pc, 1 );
-            operand = generate_conditional_label(address); //"L" + address.toString(16).padStart(4,"0");
+            operand = (address < 0x100 ? ">" : "") + generate_conditional_label(address); //"L" + address.toString(16).padStart(4,"0");
             //label_table.push(address);
         break;
 
@@ -1616,19 +1711,26 @@ function index_decode( mem, pc, operand )
             case 0x18:
                 value = read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
-                operand += "<[" + gen_index_register_offset_8(value) + "," + register + "]";
+                operand += "[<" + gen_index_register_offset_8(value) + "," + register + "]";
                 break;
 
             case 0x19:
+                value = read_memory(mem, pc) << 8;
+                pc = next_pc( pc, 1 );
+                value += read_memory(mem, pc);
+                pc = next_pc( pc, 1 );
+                operand += "[>" + gen_index_register_offset_16(value) + "," + register + "]";
+                break;
+
             case 0x1d:
                 value = read_memory(mem, pc) << 8;
                 pc = next_pc( pc, 1 );
                 value += read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
                 if(absIndPC)
-                    operand += ">[" + gen_index_register_offset_16(value) + ",pc]";
+                    operand += "[>" + gen_index_register_offset_16(value) + ",pc]";
                 else
-                    operand += ">[" + generate_conditional_label(pc + ((value << 16) >> 16)) + ",pcr]";
+                    operand += "[>" + generate_conditional_label(pc + ((value << 16) >> 16)) + ",pcr]";
                 break;
 
             case 0x1b: operand += "[d," + register + "]"; break;
@@ -1637,9 +1739,9 @@ function index_decode( mem, pc, operand )
                 value = read_memory(mem, pc);
                 pc = next_pc( pc, 1 );
                 if(absIndPC)
-                    operand += "<[" + gen_index_register_offset_8(value) + ",pc]";
+                    operand += "[<" + gen_index_register_offset_8(value) + ",pc]";
                 else
-                    operand += "<[" + generate_conditional_label(pc + ((value << 24) >> 24)) + ",pcr]";
+                    operand += "[<" + generate_conditional_label(pc + ((value << 24) >> 24)) + ",pcr]";
                 break;
 
             case 0x07:
@@ -1715,7 +1817,7 @@ function index_decode( mem, pc, operand )
                     pc = next_pc( pc, 1 );
                     value += read_memory(mem, pc);
                     pc = next_pc( pc, 1 );
-                    operand += ">[" + generate_conditional_label(value) + "]";
+                    operand += "[>" + generate_conditional_label(value) + "]";
                 }
                 else if(allow_6309_codes)
                 {
@@ -1736,7 +1838,7 @@ function index_decode( mem, pc, operand )
                             pc = next_pc( pc, 1 );
                             value += read_memory(mem, pc);
                             pc = next_pc( pc, 1 );
-                            operand += ">[$" + value.toString(16).padStart(4,"0") + ",w]";
+                            operand += "[>$" + value.toString(16).padStart(4,"0") + ",w]";
                             break;
 
                         case 0xcf: operand += ",w++"; break;

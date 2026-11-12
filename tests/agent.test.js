@@ -44,6 +44,18 @@ test("DECB execution address and OS-9 module entry points", () =>
     assert.match(disassembleBytes(decb, {file_type: "decb"}), /4000 8642\s+lda/);
     const os9 = Buffer.from([0x87, 0xcd, 0, 14, 0, 0, 0x11, 0, 0, 0, 11, 0x86, 0x42, 0x39]);
     assert.match(disassembleBytes(os9, {file_type: "os9"}), /000b 8642\s+lda/);
+    // Drivr and FMgr modules have a dispatch table of three-byte entries at exec.
+    const dispatchModule = (type, entries) =>
+    {
+        const bytes = [0x87, 0xcd, 0, 0, 0, 0, type, 0x81, 0, 0, 13, 0, 0];
+        for(let i = 0; i < entries; i++) bytes.push(0x86, 0x40 + i, 0x39);
+        bytes[3] = bytes.length;
+        return Buffer.from(bytes);
+    };
+    assert.match(disassembleBytes(dispatchModule(0xe1, 6), {file_type: "os9"}), /001c 8645\s+lda/);
+    assert.doesNotMatch(disassembleBytes(dispatchModule(0xe1, 7), {file_type: "os9"}), /001f 8646\s+lda/);
+    assert.match(disassembleBytes(dispatchModule(0xd1, 13), {file_type: "os9"}), /0031 864c\s+lda/);
+    assert.doesNotMatch(disassembleBytes(dispatchModule(0x11, 2), {file_type: "os9"}), /0010 8641\s+lda/);
     assert.match(disassembleBytes(Buffer.from([255, 0, 0, 0x40, 0]), {file_type: "decb"}), /end/);
     const emptyBlock = Buffer.concat([Buffer.from([0, 0, 0, 0, 0]), decb]);
     assert.equal(disassembleBytes(emptyBlock, {file_type: "decb"}), disassembleBytes(decb, {file_type: "decb"}));

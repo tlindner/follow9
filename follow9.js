@@ -483,13 +483,22 @@ function disassembleBytes(data, options = {})
                         transfers.push((address+offset)&0xffff);
                     }
 
-                    if((view[6]>>4) == 0x0e)
+                    // Device drivers (Drivr, $E) and file managers (FMgr, $D)
+                    // start with a dispatch table of three-byte branches at
+                    // the execution offset: six for a driver (Init, Read,
+                    // Write, GetStat, SetStat, Term), thirteen for a file
+                    // manager (Create, Open, MakDir, ChgDir, Delete, Seek,
+                    // Read, Write, ReadLn, WriteLn, GetStat, SetStat, Close).
+                    // The header entry covers exec+0; add the others.
+                    let moduleType = view[6]>>4;
+                    let entryCount = {0x0e: 6, 0x0d: 13}[moduleType] || 1;
+                    let moduleEnd = Math.min((view[2]<<8) + view[3], view.length);
+
+                    for(let i=1; i<entryCount; i++)
                     {
-                        for(let i=address+3; i<address+9; i+=3)
-                        {
-                            let addy = (view[i]<<8) + view[i+1];
-                            transfers.push((addy+offset)&0xffff);
-                        }
+                        let entry = address + i*3;
+                        if(entry + 3 > moduleEnd) break;
+                        transfers.push((entry+offset)&0xffff);
                     }
                 }
                 else
